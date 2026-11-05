@@ -27,16 +27,20 @@ PALETTE = {
     # 腰带
     "sash":        "7d5a3a",
     "sash_lit":    "a87c4c",
+    "sash_dark":   "5b3f28",
     # 裤子 / 靴
     "pants":       "39413e",
     "pants_lit":   "4d5852",
+    "pants_dark":  "2b322f",
     "boot":        "4a3527",
     "boot_lit":    "6b4d36",
+    "boot_dark":   "33241a",
     # 金属 / 玉
     "steel":       "cbdcd4",
     "steel_dark":  "8fa5a0",
     "jade":        "567263",
     "gold":        "bda36a",
+    "gold_lit":    "d4bd88",
     "gold_dark":   "8a7345",
 }
 
@@ -56,14 +60,18 @@ ASCII_KEYS = [
     ("C", "cream_dark"),
     ("b", "sash"),
     ("B", "sash_lit"),
+    ("x", "sash_dark"),
     ("p", "pants"),
     ("P", "pants_lit"),
+    ("q", "pants_dark"),
     ("o", "boot"),
     ("O", "boot_lit"),
+    ("Q", "boot_dark"),
     ("m", "steel"),
     ("M", "steel_dark"),
     ("j", "jade"),
     ("g", "gold"),
+    ("y", "gold_lit"),
     ("G", "gold_dark"),
     ("w", "shadow"),
 ]

@@ -24,3 +24,7 @@ desktop.ini
 
 # 字体原子写入残渣
 assets/.font.otf.*
+
+# Python 缓存
+__pycache__/
+*.pyc

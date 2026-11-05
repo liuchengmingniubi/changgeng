@@ -27,6 +27,13 @@ class Canvas:
         x, y, w, h = int(round(x)), int(round(y)), int(round(w)), int(round(h))
         if w <= 0 or h <= 0:
             return
+        if isinstance(color, tuple) and len(color) == 4 and color[3] == 0:
+            self.d.rectangle([x, y, x + w - 1, y + h - 1], fill=None)
+            for yy in range(y, y + h):
+                for xx in range(x, x + w):
+                    if 0 <= xx < self.w and 0 <= yy < self.h:
+                        self.img.putpixel((xx, yy), (0, 0, 0, 0))
+            return
         self.d.rectangle([x, y, x + w - 1, y + h - 1], fill=rgba(color))
 
     def line(self, x0, y0, x1, y1, color, width=1):
@@ -55,6 +62,10 @@ class Canvas:
     def limb(self, a, b, width, color):
         """两段式肢体：粗细固定，端点取整，避免糊边。"""
         self.line(a[0], a[1], b[0], b[1], color, width)
+
+    def carve(self, x, y, w, h):
+        """挖成透明，用来削圆角。"""
+        self.rect(x, y, w, h, (0, 0, 0, 0))
 
     def out(self, color="ink", only_empty=True):
         """1 像素外描边。"""
