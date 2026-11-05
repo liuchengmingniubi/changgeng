@@ -55,6 +55,19 @@ Windows存档一般位于 `%APPDATA%/Godot/app_userdata/长庚·东沙旧事/eas
 ## 验证
 Godot 4.3 无界面导入与运行通过。`tests/smoke.gd` 验证主线全程、乱序领手册、合成扣料、重复对话不刷信任、读写存档。测试会写入测试用户的存档，运行前请备份。
 
+## 美术样品（v0.28-visual）
+
+正式场景仍是程序绘制占位图，但像素美术管线已经换掉：主角改为 4 方向逐帧精灵（行走/挥剑/待机，原生像素，
+调色板固定），并用同一套生成器做了一屏「主角家门口」样板——黄土院子、青瓦夯土大屋、木栅栏院门、水井、
+六块菜畦、独立道具，人物可走动、有碰撞、按脚底 y 正确遮挡。样板是独立预览场景，**不替换正式地图**。
+
+```
+engine\Godot_v4.3-stable_win64_console.exe --path . res://previews/home_yard_preview.tscn
+```
+
+截图与行走演示见 `previews/home_yard/`，素材规范与重新生成命令见 `previews/home_yard/README.md`，
+本次改动说明见 `DEVELOPMENT-v0.28-visual.md`。
+
 ## 授权
 游戏代码：MIT（见 LICENSE）。程序绘制美术为本项目原创。
 附带 Godot Engine 4.3：MIT（engine/LICENSE.txt）。

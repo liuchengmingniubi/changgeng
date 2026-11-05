@@ -1,188 +1,267 @@
-﻿"""主角家：320x224 的正面偏俯视房屋精灵。
+"""主角家：700x440 的 3/4 视角屋舍。
 
-结构固定为四层：屋顶(青瓦) -> 檐口 -> 夯土墙(木构) -> 石台基。
-所有装饰（辣椒串、玉米、灯笼、烟囱）都在这张图里，方便一次性替换。
+结构（从后到前）：
+    屋脊 + 两坡瓦面 + 瓦当一排 → 檐口木枋 → 夯土墙（立柱、门窗、挂饰）→ 石台基
+瓦面用"每一列筒瓦一条竖向条带"来画，列间一明一暗，形成参考图那种纵向瓦垄。
 """
 from .canvas import Canvas
-from .scene_palette import rng
+from .scene_palette import T, rng
 
-W, H = 320, 224
-RIDGE_Y, EAVE_Y = 6, 104
-RIDGE_HALF, EAVE_HALF = 100, 160
-WALL_X0, WALL_X1 = 16, 304
-WALL_Y0, WALL_Y1 = 112, 212
+W, H = 700, 440
+CX = W // 2
+RIDGE_Y, EAVE_Y = 26, 246
+RIDGE_HALF, EAVE_HALF = 148, 336
+WALL_Y0, WALL_Y1 = 252, 404
+PLINTH_Y1 = 440
 
 
-def _edge(y):
-    """某一行的屋顶左右边界。"""
-    t = (EAVE_Y - y) / float(EAVE_Y - RIDGE_Y)
-    half = EAVE_HALF - (EAVE_HALF - RIDGE_HALF) * t
-    return int(round(160 - half)), int(round(160 + half))
+def _half(y):
+    t = (y - RIDGE_Y) / float(EAVE_Y - RIDGE_Y)
+    t = max(0.0, min(1.0, t))
+    t = t ** 0.92
+    return RIDGE_HALF + (EAVE_HALF - RIDGE_HALF) * t
 
 
 def _roof(cv):
-    band = 9
-    for y in range(EAVE_Y, RIDGE_Y - 1, -band):
-        x0, x1 = _edge(y)
-        cv.rect(x0, y - band, x1 - x0, band, "tile")
-        cv.rect(x0, y - band, x1 - x0, 2, "tile_lt")
-        cv.rect(x0, y - 1, x1 - x0, 1, "tile_dk")
-        cv.rect(x0, y - band, 1, band, "tile_lt")
-        cv.rect(x1 - 1, y - band, 1, band, "tile_dk")
-        # 瓦垄竖缝，错位排列
-        off = 7 if (y // band) % 2 else 0
-        for x in range(x0 + off, x1, 14):
-            cv.rect(x, y - band + 2, 1, band - 2, "tile_dk")
-            # 每片瓦的边缘高光，避免整条带子读成平涂
-            if rng(x, y, 2) > 0.45:
-                cv.rect(x + 1, y - band + 2, 1, band - 3, "tile_lt")
-        # 瓦面斑驳：旧瓦的深浅点
-        for x in range(x0 + 2, x1 - 2, 3):
-            if rng(x, y, 7) > 0.88:
-                cv.rect(x, y - band + 3, 2, 2, "tile_dk")
-            elif rng(x, y, 7) < 0.10:
-                cv.px(x, y - band + 4, "tile_hi")
+    # 瓦面：先铺底，再一列列画筒瓦（每列横向做明暗，形成瓦垄），最后压横向瓦口
+    for y in range(RIDGE_Y, EAVE_Y + 1):
+        hw = _half(y)
+        cv.line(CX - hw, y, CX + hw, y, T("tile", 4))
 
-    # 屋脊
-    cv.rect(60, RIDGE_Y - 4, 200, 8, "tile_dk")
-    cv.rect(60, RIDGE_Y - 4, 200, 2, "tile_hi")
-    cv.rect(60, RIDGE_Y + 2, 200, 2, "tile")
-    for x in (56, 246):
-        cv.rect(x, RIDGE_Y - 8, 16, 8, "tile_dk")
-        cv.rect(x + 2, RIDGE_Y - 10, 12, 3, "tile_lt")
-    # 檐口
-    cv.rect(0, EAVE_Y - 4, W, 6, "wood_dk")
-    cv.rect(0, EAVE_Y - 4, W, 2, "wood")
-    cv.rect(0, EAVE_Y + 2, W, 5, "tile_dk")
+    # 后坡（屋脊另一侧）只露一条窄边
+    for y in range(RIDGE_Y - 12, RIDGE_Y + 2):
+        hw = _half(RIDGE_Y) * 0.97
+        cv.line(CX - hw, y, CX + hw, y, T("tile", 5))
+
+    step = 22
+    for i in range(-16, 17):
+        x0 = i * step
+        for y in range(RIDGE_Y, EAVE_Y + 1):
+            hw = _half(y)
+            if abs(x0) > hw:
+                continue
+            t = (y - RIDGE_Y) / float(EAVE_Y - RIDGE_Y)
+            for dx, lv in ((-9, 3), (-6, 2), (-2, 1), (3, 2), (7, 3), (9, 4)):
+                if abs(x0 + dx) > hw:
+                    continue
+                cv.px(CX + x0 + dx, y, T("tile", lv + (1 if t > 0.78 else 0)))
+
+    # 横向瓦口：每 13 像素一道，瓦头压出半圆的暗影，读起来才像一片片瓦
+    for y in range(RIDGE_Y + 6, EAVE_Y, 13):
+        hw = _half(y)
+        for i in range(-16, 17):
+            x = CX + i * step
+            if abs(i * step) > hw:
+                continue
+            for dx in range(-9, 10):
+                xx = x + dx
+                if abs(xx - CX) > hw:
+                    continue
+                cv.px(xx, y + (abs(dx) // 6), T("tile", 5))
+            cv.px(x, y + 2, T("tile", 4))
+
+    # 檐口的一排瓦当（半圆头）
+    for i in range(-20, 21):
+        x = CX + i * step
+        hw = _half(EAVE_Y)
+        if abs(i * step) > hw - 5:
+            continue
+        yy = EAVE_Y
+        cv.ellipse(x, yy + 5, 8, 7, T("tile", 3))
+        cv.ellipse(x, yy + 3, 7, 5, T("tile", 1))
+        cv.ellipse(x, yy + 1, 5, 3, T("tile", 0))
+        cv.px(x, yy + 7, T("tile", 5))
+
+    # 屋脊：一条压顶 + 两端翘头
+    for x in range(-RIDGE_HALF - 6, RIDGE_HALF + 7):
+        cv.px(CX + x, RIDGE_Y - 13, T("tile", 4))
+        cv.px(CX + x, RIDGE_Y - 12, T("tile", 2))
+        cv.px(CX + x, RIDGE_Y - 11, T("tile", 1))
+        cv.px(CX + x, RIDGE_Y - 10, T("tile", 2))
+        cv.px(CX + x, RIDGE_Y - 9, T("tile", 4))
+    for s in (-1, 1):
+        x = CX + s * RIDGE_HALF
+        for k in range(8):
+            cv.px(x + s * k, RIDGE_Y - 13 - k // 2, T("tile", 1))
+            cv.px(x + s * k, RIDGE_Y - 12 - k // 2, T("tile", 3))
+        cv.ellipse(x + s * 8, RIDGE_Y - 22, 5, 5, T("tile", 2))
+        cv.ellipse(x + s * 8, RIDGE_Y - 23, 3, 3, T("tile", 0))
+
+    # 檐下阴影：檐口压一条深色，墙面接一条渐变
+    for x in range(-EAVE_HALF - 4, EAVE_HALF + 5):
+        cv.px(CX + x, EAVE_Y + 1, T("tile", 6))
+        cv.px(CX + x, EAVE_Y + 2, T("tile", 5))
+        cv.px(CX + x, EAVE_Y + 3, T("tile", 4))
+
+    # 屋面檐板：沿两侧斜边压一条厚边，屋子才有厚度
+    for y in range(RIDGE_Y + 4, EAVE_Y + 1):
+        hw = _half(y)
+        for s in (-1, 1):
+            x = int(round(CX + s * hw))
+            cv.px(x, y, T("tile", 6))
+            cv.px(x - s, y, T("tile", 5))
+            cv.px(x - 2 * s, y, T("tile", 3))
 
 
-def _eave_tiles(cv):
-    """檐口下沿的瓦当，画在墙之后，才像探出墙头。"""
-    for x in range(4, W - 4, 12):
-        cv.ellipse(x, EAVE_Y + 8, 5, 7, "tile")
-        cv.ellipse(x, EAVE_Y + 9, 4, 5, "tile_dk")
-        cv.px(x, EAVE_Y + 10, "tile_hi")
-
-
-def _chimney(cv):
-    cv.rect(64, 26, 30, 34, "stone")
-    cv.rect(64, 26, 30, 3, "stone_lt")
-    cv.rect(64, 26, 3, 34, "stone_lt")
-    cv.rect(91, 26, 3, 34, "stone_dk")
-    cv.rect(61, 20, 36, 8, "stone_dk")
-    cv.rect(61, 20, 36, 2, "stone_lt")
-    cv.rect(66, 12, 26, 9, "stone_dk")
-    cv.rect(66, 12, 26, 2, "stone_lt")
+def _eave_beam(cv):
+    # 檐枋：一根横木 + 斗拱块
+    cv.rect(CX - EAVE_HALF + 6, EAVE_Y - 4, EAVE_HALF * 2 - 12, 14, T("wood", 2))
+    cv.rect(CX - EAVE_HALF + 6, EAVE_Y - 4, EAVE_HALF * 2 - 12, 2, T("wood", 1))
+    cv.rect(CX - EAVE_HALF + 6, EAVE_Y + 8, EAVE_HALF * 2 - 12, 2, T("wood", 4))
+    for i in range(-8, 9):
+        x = CX + i * 38
+        cv.rect(x - 7, EAVE_Y - 10, 14, 8, T("wood", 2))
+        cv.rect(x - 7, EAVE_Y - 10, 14, 2, T("wood", 1))
+        cv.rect(x - 7, EAVE_Y - 4, 14, 2, T("wood", 4))
 
 
 def _wall(cv):
-    cv.rect(WALL_X0, WALL_Y0, WALL_X1 - WALL_X0, WALL_Y1 - WALL_Y0, "wall")
-    # 墙面斑驳
+    x0, x1 = CX - 296, CX + 296
+    cv.rect(x0, WALL_Y0, x1 - x0, WALL_Y1 - WALL_Y0, T("wall", 2))
+    # 横向明暗：左受光
+    for x in range(x0, x1):
+        t = (x - x0) / float(x1 - x0)
+        lv = 1 if t < 0.18 else (2 if t < 0.62 else 3)
+        cv.rect(x, WALL_Y0, 1, WALL_Y1 - WALL_Y0, T("wall", lv))
+    # 斑驳：先压几块小的墙皮深色，再撒细颗粒，土墙才不像一整块塑料
+    for i in range(22):
+        cxp = x0 + 20 + rng(i, 1, 31) * (x1 - x0 - 40)
+        cyp = WALL_Y0 + 30 + rng(i, 2, 32) * (WALL_Y1 - WALL_Y0 - 56)
+        rx = 5 + rng(i, 3, 33) * 13
+        ry = 3 + rng(i, 4, 34) * 6
+        cv.ellipse(cxp, cyp, rx, ry, T("wall", 3))
     for y in range(WALL_Y0, WALL_Y1):
-        for x in range(WALL_X0, WALL_X1):
-            r = rng(x, y, 5)
-            if r > 0.94:
-                cv.px(x, y, "wall_lt")
-            elif r < 0.06:
-                cv.px(x, y, "wall_dk")
-    # 木构：两根立柱 + 上枋 + 腰枋
-    for x in (WALL_X0, WALL_X1 - 10):
-        cv.rect(x, WALL_Y0, 10, WALL_Y1 - WALL_Y0, "wood")
-        cv.rect(x, WALL_Y0, 2, WALL_Y1 - WALL_Y0, "wood_lt")
-        cv.rect(x + 8, WALL_Y0, 2, WALL_Y1 - WALL_Y0, "wood_dk")
-    cv.rect(WALL_X0, WALL_Y0, WALL_X1 - WALL_X0, 8, "wood")
-    cv.rect(WALL_X0, WALL_Y0, WALL_X1 - WALL_X0, 2, "wood_lt")
-    cv.rect(WALL_X0, WALL_Y0 + 6, WALL_X1 - WALL_X0, 2, "wood_dk")
-    # 檐下阴影
-    cv.rect(WALL_X0 + 2, WALL_Y0 + 8, WALL_X1 - WALL_X0 - 4, 10, "wall_dk")
+        for x in range(x0, x1):
+            r = rng(x, y, 3)
+            if r > 0.995:
+                cv.px(x, y, T("wall", 3))
+            elif r < 0.004:
+                cv.px(x, y, T("wall", 1))
+    # 檐下阴影带
+    for i in range(18):
+        lv = 3 + min(2, i // 7)
+        cv.rect(x0, WALL_Y0 + i, x1 - x0, 1, T("wall", lv))
+    # 墙裙返潮
+    cv.rect(x0, WALL_Y1 - 26, x1 - x0, 26, T("wall", 3))
+    cv.rect(x0, WALL_Y1 - 26, x1 - x0, 2, T("wall", 4))
+    for i in range(26):
+        if i % 5 == 0:
+            cv.rect(x0 + 20 + i * 17, WALL_Y1 - 24, 3, 10, T("wall", 4))
+    # 立柱
+    for px in (-296, -238, 238, 296):
+        cv.rect(CX + px - 9, WALL_Y0, 18, WALL_Y1 - WALL_Y0, T("wood", 2))
+        cv.rect(CX + px - 9, WALL_Y0, 3, WALL_Y1 - WALL_Y0, T("wood", 1))
+        cv.rect(CX + px + 6, WALL_Y0, 3, WALL_Y1 - WALL_Y0, T("wood", 3))
+        cv.rect(CX + px - 11, WALL_Y0, 22, 6, T("wood", 3))
+    # 上枋
+    cv.rect(x0 - 6, WALL_Y0 + 18, (x1 - x0) + 12, 10, T("wood", 2))
+    cv.rect(x0 - 6, WALL_Y0 + 18, (x1 - x0) + 12, 2, T("wood", 1))
+    cv.rect(x0 - 6, WALL_Y0 + 26, (x1 - x0) + 12, 2, T("wood", 4))
 
 
 def _door(cv):
-    x0, x1 = 132, 188
-    y0, y1 = 140, 206
-    cv.rect(x0 - 8, y0 - 8, (x1 - x0) + 16, 8, "wood")
-    cv.rect(x0 - 8, y0 - 8, (x1 - x0) + 16, 2, "wood_lt")
-    cv.rect(x0 - 8, y0, 8, y1 - y0 + 6, "wood")
-    cv.rect(x1, y0, 8, y1 - y0 + 6, "wood")
-    cv.rect(x0, y0, x1 - x0, y1 - y0, "wood_dk")
-    for leaf in (0, 1):
-        lx = x0 + leaf * 28
-        cv.rect(lx + 1, y0 + 1, 26, y1 - y0 - 2, "wood")
-        for px in range(lx + 5, lx + 26, 6):
-            cv.rect(px, y0 + 2, 1, y1 - y0 - 4, "wood_dk")
-        cv.rect(lx + 1, y0 + 1, 26, 1, "wood_lt")
-        for sy in (y0 + 12, y0 + 32):
-            for sx in (lx + 6, lx + 14, lx + 22):
-                cv.rect(sx, sy, 2, 2, "gold_dark")
-        cv.rect(lx + (22 if leaf == 0 else 4), y0 + 26, 2, 8, "gold")
-    # 门槛 + 门墩
-    cv.rect(x0 - 8, y1, (x1 - x0) + 16, 6, "stone")
-    cv.rect(x0 - 8, y1, (x1 - x0) + 16, 2, "stone_lt")
-    # 门内暗部
-    cv.rect(x0, y0, x1 - x0, 3, "shadow")
+    x0, x1 = CX - 62, CX + 62
+    y0, y1 = 276, WALL_Y1
+    cv.rect(x0 - 12, y0 - 12, (x1 - x0) + 24, (y1 - y0) + 12, T("wood", 3))
+    cv.rect(x0 - 6, y0 - 6, (x1 - x0) + 12, (y1 - y0) + 6, T("wood", 4))
+    # 门扇
+    cv.rect(x0, y0, x1 - x0, y1 - y0, T("wood", 2))
+    for i in range(6):
+        px = x0 + 4 + i * 20
+        cv.rect(px, y0, 2, y1 - y0, T("wood", 3))
+        cv.rect(px + 2, y0, 2, y1 - y0, T("wood", 1))
+    # 门缝
+    cv.rect(CX - 1, y0, 2, y1 - y0, T("wood", 4))
+    # 门钉与门环
+    for yy in (y0 + 22, y0 + 62, y0 + 100):
+        for xx in (x0 + 16, x0 + 40, x1 - 40, x1 - 16):
+            cv.px(xx, yy, T("ink", 0))
+    for xx in (CX - 16, CX + 16):
+        cv.ellipse(xx, y0 + 54, 6, 6, T("ink", 0))
+        cv.ellipse(xx, y0 + 54, 5, 5, T("wood", 1))
+        cv.ellipse(xx, y0 + 54, 3, 3, T("ink", 0))
+    # 门槛石
+    cv.rect(x0 - 8, y1 - 6, (x1 - x0) + 16, 8, T("stone", 2))
+    cv.rect(x0 - 8, y1 - 6, (x1 - x0) + 16, 2, T("stone", 1))
 
 
-def _window(cv, x0, y0, w, h):
-    cv.rect(x0, y0, w, h, "wood")
-    cv.rect(x0, y0, w, 3, "wood_lt")
-    cv.rect(x0, y0 + h - 2, w, 2, "wood_dk")
-    cv.rect(x0 + 5, y0 + 4, w - 10, h - 8, "ink_soft")
-    cv.rect(x0 + 5, y0 + 4, w - 10, 2, "ink")
+def _window(cv, cx, cy, w, h):
+    x0, y0 = cx - w // 2, cy - h // 2
+    cv.rect(x0 - 6, y0 - 6, w + 12, h + 12, T("wood", 2))
+    cv.rect(x0 - 6, y0 - 6, w + 12, 2, T("wood", 1))
+    cv.rect(x0 - 6, y0 + h + 4, w + 12, 2, T("wood", 3))
+    # 窗纸
+    cv.rect(x0, y0, w, h, T("plaster", 2))
+    cv.rect(x0, y0, w, h // 2, T("plaster", 1))
     # 窗棂
-    for i in range(1, 3):
-        cx = x0 + 5 + i * (w - 10) // 3
-        cv.rect(cx, y0 + 4, 2, h - 8, "wood_lt")
-    cv.rect(x0 + 5, y0 + 4 + (h - 8) // 2, w - 10, 2, "wood_lt")
+    for i in range(1, 4):
+        cv.rect(x0 + i * w // 4, y0, 2, h, T("wood", 3))
+    for j in range(1, 3):
+        cv.rect(x0, y0 + j * h // 3, w, 2, T("wood", 3))
+    cv.rect(x0, y0, w, 2, T("wood", 4))
     # 窗台
-    cv.rect(x0 - 4, y0 + h, w + 8, 4, "wood")
-    cv.rect(x0 - 4, y0 + h, w + 8, 2, "wood_lt")
+    cv.rect(x0 - 8, y0 + h + 6, w + 16, 5, T("stone", 2))
+    cv.rect(x0 - 8, y0 + h + 6, w + 16, 2, T("stone", 1))
+
+
+def _plinth(cv):
+    x0, x1 = CX - 306, CX + 306
+    cv.rect(x0, WALL_Y1, x1 - x0, PLINTH_Y1 - WALL_Y1, T("stone", 2))
+    cv.rect(x0, WALL_Y1, x1 - x0, 3, T("stone", 1))
+    cv.rect(x0, PLINTH_Y1 - 4, x1 - x0, 4, T("stone", 4))
+    # 石块缝
+    for i in range(0, (x1 - x0) // 44 + 1):
+        px = x0 + i * 44 + (10 if i % 2 else 0)
+        cv.rect(px, WALL_Y1 + 4, 2, PLINTH_Y1 - WALL_Y1 - 8, T("stone", 3))
+    cv.rect(x0, WALL_Y1 + 20, x1 - x0, 2, T("stone", 3))
+    # 青苔
+    for i in range(90):
+        x = x0 + rng(i, 1, 6) * (x1 - x0)
+        y = WALL_Y1 + 8 + rng(i, 2, 7) * (PLINTH_Y1 - WALL_Y1 - 14)
+        cv.px(x, y, T("grass", 4))
+    # 台阶
+    sx, sy, sw, sh = 320, WALL_Y1 + 22, 60, 18
+    cv.rect(sx, sy, sw, sh, T("stone", 2))
+    cv.rect(sx, sy, sw, 3, T("stone", 1))
+    cv.rect(sx - 4, sy + sh, sw + 8, 10, T("stone", 3))
+    cv.rect(sx - 4, sy + sh, sw + 8, 2, T("stone", 2))
+    cv.rect(sx - 8, sy + sh + 10, sw + 16, 8, T("stone", 4))
 
 
 def _hangings(cv):
-    # 辣椒串
-    for i in range(2):
-        x = 214 + i * 9
-        cv.rect(x, 118, 2, 12, "straw_dk")
-        for k in range(5):
-            cv.rect(x - 1 + (k % 2), 122 + k * 4, 4, 3, "cloth_red")
-            cv.rect(x - 1 + (k % 2), 122 + k * 4, 2, 1, "cloth_red_lt")
-    # 玉米
-    for i in range(3):
-        x = 240 + i * 7
-        cv.rect(x, 120, 4, 16, "straw_lt")
-        cv.rect(x, 120, 1, 16, "straw_hi")
-        cv.rect(x, 136, 4, 4, "straw_dk")
-    # 灯笼
-    lx = 118
-    cv.rect(lx, 116, 1, 8, "gold_dark")
-    cv.rect(lx - 7, 124, 15, 16, "cloth_red")
-    cv.rect(lx - 7, 124, 15, 2, "cloth_red_lt")
-    cv.rect(lx - 7, 138, 15, 2, "cloth_red")
-    for i in range(1, 5):
-        cv.rect(lx - 7 + i * 3, 126, 1, 12, "cloth_red_lt")
-    cv.rect(lx - 4, 120, 9, 4, "gold_dark")
-    cv.rect(lx - 4, 140, 9, 4, "gold_dark")
-    cv.rect(lx - 2, 144, 3, 5, "gold")
-
-
-def _base(cv):
-    cv.rect(WALL_X0 - 4, WALL_Y1, (WALL_X1 - WALL_X0) + 8, 12, "stone")
-    cv.rect(WALL_X0 - 4, WALL_Y1, (WALL_X1 - WALL_X0) + 8, 3, "stone_lt")
-    cv.rect(WALL_X0 - 4, WALL_Y1 + 9, (WALL_X1 - WALL_X0) + 8, 3, "stone_dk")
-    for x in range(WALL_X0 - 4, WALL_X1 + 4, 24):
-        cv.rect(x, WALL_Y1 + 3, 1, 9, "stone_dk")
+    # 左侧灯笼
+    lx, ly = CX - 250, 286
+    cv.rect(lx - 1, ly - 14, 2, 14, T("ink", 1))
+    cv.ellipse(lx, ly + 8, 11, 13, T("red", 1))
+    cv.ellipse(lx - 3, ly + 5, 6, 8, T("red", 0))
+    cv.rect(lx - 8, ly - 4, 16, 3, T("wood", 3))
+    cv.rect(lx - 8, ly + 20, 16, 3, T("wood", 3))
+    for i in range(5):
+        cv.rect(lx - 5 + i * 3, ly + 23, 1, 5, T("red", 1))
+    # 右侧辣椒串 + 玉米
+    for k in range(9):
+        x = CX + 196 + (k % 3) * 7
+        y = 284 + k * 6
+        cv.px(x, y, T("red", 0))
+        cv.px(x, y + 1, T("red", 1))
+        cv.px(x, y + 2, T("red", 2))
+    for k in range(4):
+        x = CX + 238 + (k % 2) * 8
+        y = 288 + k * 9
+        cv.ellipse(x, y, 4, 6, T("crop_y", 1))
+        cv.px(x - 1, y - 1, T("crop_y", 0))
+        cv.px(x, y + 5, T("wood", 3))
 
 
 def draw():
     cv = Canvas(W, H)
-    _chimney(cv)
     _roof(cv)
+    _eave_beam(cv)
     _wall(cv)
-    _eave_tiles(cv)
-    _window(cv, 44, 150, 46, 34)
-    _window(cv, 214, 146, 60, 40)
     _door(cv)
-    _base(cv)
+    _window(cv, CX - 190, 312, 78, 46)
+    _window(cv, CX + 190, 312, 78, 46)
+    _plinth(cv)
     _hangings(cv)
-    cv.out("ink")
+    cv.out(T("ink", 0))
     return cv

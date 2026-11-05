@@ -1,278 +1,491 @@
-﻿"""场景物件：树、栅栏、作物、小道具。
+"""树木、栅栏、院门、菜畦与杂物：全部是独立素材，底部中心对齐。
 
-每个小道具都画在 32x32 的格子里，底边中心对齐 (16,30)，方便统一摆放。
+光照统一：光从左上打来，左上亮、右下暗，每样东西只用自己的材质梯取色。
 """
-from .canvas import Canvas
-from .scene_palette import rng
+import math
 
-# ---------------------------------------------------------------- 树
+from .canvas import Canvas
+from .scene_palette import T, rng
+
+
+# ---------------- 通用 ----------------
+def _column(cv, x, y0, y1, w, base, lit=None, dark=None):
+    cv.rect(x - w / 2, y0, w, y1 - y0, T(base, 2))
+    if lit:
+        cv.rect(x - w / 2, y0, max(1, w // 3), y1 - y0, T(lit, 1))
+    if dark:
+        cv.rect(x + w / 2 - max(1, w // 3), y0, max(1, w // 3), y1 - y0, T(dark, 4))
+
+
+def _canopy(cv, cx, cy, rx, ry, seed, base="leaf", holes=0.80):
+    """一团树冠：按椭球法线取明暗档，边缘用噪声咬碎。"""
+    for y in range(int(cy - ry), int(cy + ry) + 1):
+        for x in range(int(cx - rx), int(cx + rx) + 1):
+            dx = (x - cx) / rx
+            dy = (y - cy) / ry
+            d2 = dx * dx + dy * dy
+            n = rng(x, y, seed)
+            if d2 > 1.0 - 0.16 * n:
+                continue
+            if d2 > holes and n > 0.78:
+                continue
+            lum = (-0.52 * dx - 0.78 * dy) * 0.9 + 0.55
+            lum += (rng(x // 3, y // 3, seed + 7) - 0.5) * 0.34
+            lv = int(round((1.0 - lum) * 3.1 + 0.6))
+            lv = max(0, min(6, lv))
+            cv.px(x, y, T(base, lv))
+
+
+def _shadow_ellipse(cv, cx, cy, rx, ry, level=5):
+    # 大的投影（树、栅栏、院门、菜畦）已经烘进地面层了，素材里只留小物件的接触影，
+    # 否则会和烘焙阴影叠成两层，出现参考图里没有的硬边褐色圆盘。
+    if rx > 20:
+        return
+    cv.ellipse(cx, cy, rx, ry, T("loess", level))
+
+
+# ---------------- 树 ----------------
 def tree(kind="big"):
     if kind == "big":
-        w, h = 156, 176
-        blobs = [(-30, -96, 40, 34), (26, -104, 34, 30), (-2, -128, 38, 30),
-                 (-46, -70, 28, 24), (44, -74, 28, 24), (0, -92, 44, 34)]
-        trunk_h, trunk_w = 62, 15
+        w, h = 250, 300
+        trunk_h = 150
+        blobs = [(0, -8, 96, 86), (-52, 22, 62, 56), (54, 18, 66, 58), (2, -62, 62, 52)]
     else:
-        w, h = 112, 128
-        blobs = [(-20, -70, 28, 23), (18, -76, 24, 21), (0, -92, 26, 20)]
-        trunk_h, trunk_w = 46, 11
+        w, h = 168, 210
+        trunk_h = 104
+        blobs = [(0, -6, 66, 60), (-38, 16, 44, 40), (40, 12, 46, 42)]
     cv = Canvas(w, h)
-    cx, base = w // 2, h - 6
-    # 树干 + 分枝
-    top = base - trunk_h
-    cv.rect(cx - trunk_w // 2, top, trunk_w, trunk_h, "wood")
-    cv.rect(cx - trunk_w // 2, top, 3, trunk_h, "wood_lt")
-    cv.rect(cx + trunk_w // 2 - 3, top, 3, trunk_h, "wood_dk")
-    cv.line(cx - 2, top + 16, cx - 18, top - 8, "wood", 4)
-    cv.line(cx + 2, top + 10, cx + 16, top - 12, "wood", 4)
-    # 树根
-    cv.rect(cx - trunk_w // 2 - 6, base - 4, trunk_w + 12, 6, "wood_dk")
-    cv.rect(cx - trunk_w // 2 - 4, base - 4, trunk_w + 8, 2, "wood")
-    # 冠层：先暗后亮，左上受光
-    for (ox, oy, rx, ry) in blobs:
-        cv.ellipse(cx + ox, base + oy, rx, ry, "leaf_dk")
-    for (ox, oy, rx, ry) in blobs:
-        cv.ellipse(cx + ox, base + oy - 3, rx - 2, ry - 3, "leaf")
-    for (ox, oy, rx, ry) in blobs:
-        cv.ellipse(cx + ox - 4, base + oy - 9, rx - 8, ry - 8, "leaf_lt")
-    # 叶簇噪声：受光面亮点、背光面暗点
-    for y in range(h):
-        for x in range(w):
-            if cv.img.getpixel((x, y))[3] == 0:
-                continue
-            r = rng(x, y, 9)
-            dx = x - cx
-            dy = y - base
-            lit = dx < 0 and dy < -60
-            if r > (0.90 if lit else 0.965):
-                cv.px(x, y, "leaf_hi" if lit else "leaf_dk")
-            elif r < 0.05:
-                cv.px(x, y, "leaf_lt")
-    cv.out("ink")
+    cx = w // 2
+    _shadow_ellipse(cv, cx + 18, h - 6, int(w * 0.36), 12)
+    # 树干：下粗上细，带树皮纹
+    for i in range(trunk_h):
+        t = i / float(trunk_h)
+        y = h - 4 - i
+        half = 7 - t * 3.2
+        cv.rect(cx - half, y, half * 2, 1, T("bark", 2))
+        cv.rect(cx - half, y, max(1, half * 0.45), 1, T("bark", 1))
+        cv.rect(cx + half - max(1, half * 0.4), y, max(1, half * 0.4), 1, T("bark", 3))
+    for i in range(14):
+        y = h - 12 - rng(i, 1, 5) * (trunk_h - 16)
+        cv.rect(cx - 5 + rng(i, 2, 6) * 9, y, 2, 5 + rng(i, 3, 7) * 6, T("bark", 4))
+    # 树根外扒
+    for s in (-1, 1):
+        for k in range(10):
+            cv.px(cx + s * (6 + k * 1.4), h - 6 - k // 3, T("bark", 3))
+    # 枝
+    for s in (-1, 1):
+        cv.line(cx, h - trunk_h + 6, cx + s * 42, h - trunk_h - 16, T("bark", 2), 5)
+        cv.line(cx, h - trunk_h + 24, cx + s * 34, h - trunk_h + 4, T("bark", 2), 4)
+    # 树冠
+    base_y = h - trunk_h - 40
+    for (bx, by, brx, bry) in blobs:
+        _canopy(cv, cx + bx, base_y + by, brx, bry, 11 + bx)
+    # 冠下的暗部
+    cv.out(T("ink", 0))
     return cv
 
 
-# ---------------------------------------------------------------- 栅栏
-def fence_segment(w=32, h=46):
+# ---------------- 栅栏 ----------------
+def fence_segment():
+    w, h = 96, 66
     cv = Canvas(w, h)
-    base = h - 4
+    _shadow_ellipse(cv, w // 2 + 3, h - 4, w // 2 - 6, 5)
     # 两根横杆
-    for ry in (base - 30, base - 16):
-        cv.rect(0, ry, w, 5, "wood")
-        cv.rect(0, ry, w, 2, "wood_lt")
-        cv.rect(0, ry + 4, w, 1, "wood_dk")
-    # 立柱
-    for px in (w // 2 - 9, w // 2 + 7):
-        cv.rect(px, base - 40, 5, 40, "wood")
-        cv.rect(px, base - 40, 2, 40, "wood_lt")
-        cv.rect(px + 4, base - 40, 1, 40, "wood_dk")
-        cv.rect(px, base - 44, 5, 4, "wood_dk")
-    # 杆间缠草绳
-    cv.rect(0, base - 24, w, 1, "straw_dk")
-    cv.out("ink")
+    for yy in (24, 39):
+        cv.rect(2, yy, w - 4, 6, T("wood", 1))
+        cv.rect(2, yy, w - 4, 2, T("wood", 0))
+        cv.rect(2, yy + 4, w - 4, 2, T("wood", 2))
+    # 立柱 + 石础
+    for px in (9, w // 2, w - 9):
+        cv.rect(px - 4, 12, 9, 44, T("wood", 1))
+        cv.rect(px - 4, 12, 3, 44, T("wood", 0))
+        cv.rect(px + 3, 12, 2, 44, T("wood", 2))
+        cv.rect(px - 5, 10, 11, 3, T("wood", 0))
+        cv.rect(px - 6, 54, 13, 7, T("stone", 2))
+        cv.rect(px - 6, 54, 13, 2, T("stone", 1))
+    cv.out(T("ink", 0))
     return cv
 
 
-def gate(w=100, h=70):
+def gate():
+    w, h = 150, 100
     cv = Canvas(w, h)
-    base = h - 4
-    for px in (2, w - 12):
-        cv.rect(px, base - 56, 10, 56, "wood")
-        cv.rect(px, base - 56, 3, 56, "wood_lt")
-        cv.rect(px + 9, base - 56, 1, 56, "wood_dk")
-        cv.rect(px - 2, base - 60, 14, 5, "wood_dk")
-    cv.rect(0, base - 54, w, 7, "wood")
-    cv.rect(0, base - 54, w, 2, "wood_lt")
-    cv.rect(0, base - 48, w, 1, "wood_dk")
-    # 半开的门板
-    cv.rect(14, base - 46, 34, 42, "wood")
-    for i in range(4):
-        cv.rect(14 + 3 + i * 8, base - 44, 1, 38, "wood_dk")
-    cv.rect(14, base - 46, 34, 2, "wood_lt")
-    cv.rect(44, base - 42, 2, 6, "gold")
-    cv.out("ink")
+    _shadow_ellipse(cv, w // 2 + 4, h - 5, w // 2 - 8, 7)
+    # 两根门柱
+    for px in (14, w - 14):
+        cv.rect(px - 7, 6, 14, h - 16, T("wood", 1))
+        cv.rect(px - 7, 6, 4, h - 16, T("wood", 0))
+        cv.rect(px + 3, 6, 4, h - 16, T("wood", 2))
+        cv.rect(px - 9, 2, 18, 5, T("wood", 0))
+        cv.rect(px - 9, h - 12, 18, 8, T("stone", 2))
+        cv.rect(px - 9, h - 12, 18, 2, T("stone", 1))
+    # 门扇：两片对开，竖向板条
+    for s in (0, 1):
+        x0 = 24 if s == 0 else w // 2 + 1
+        x1 = w // 2 - 1 if s == 0 else w - 24
+        cv.rect(x0, 16, x1 - x0, h - 28, T("wood", 1))
+        for i in range(5):
+            px = x0 + 3 + i * ((x1 - x0 - 6) // 5)
+            cv.rect(px, 16, 3, h - 28, T("wood", 0))
+            cv.rect(px + 4, 16, 1, h - 28, T("wood", 2))
+        cv.rect(x0, 16, x1 - x0, 3, T("wood", 0))
+        # 两道横撑
+        for yy in (34, h - 32):
+            cv.rect(x0, yy, x1 - x0, 5, T("wood", 1))
+            cv.rect(x0, yy, x1 - x0, 2, T("wood", 0))
+    cv.out(T("ink", 0))
     return cv
 
 
-# ---------------------------------------------------------------- 作物
+# ---------------- 菜畦 ----------------
+def _plot_frame(cv, w, h):
+    cv.rect(0, 4, w, h - 4, T("wood", 1))
+    cv.rect(0, 4, w, 2, T("wood", 0))
+    cv.rect(0, h - 4, w, 4, T("wood", 2))
+    cv.rect(3, 10, w - 6, h - 18, T("soil", 1))
+    for y in range(10, h - 12, 8):
+        cv.rect(4, y, w - 8, 2, T("soil", 2))
+        cv.rect(4, y + 2, w - 8, 1, T("soil", 0))
+    for i in range(16):
+        cv.rect(6 + rng(i, 1, 9) * (w - 14), 12 + rng(i, 2, 10) * (h - 26), 3, 2, T("soil", 3))
+
+
+def _crop_leafy(cv, w, h):
+    for r in range(5):
+        for c in range(7):
+            x = 17 + c * ((w - 34) / 6.0) + (rng(r, c, 1) - 0.5) * 5
+            y = 27 + r * ((h - 46) / 4.0) + (rng(r, c, 2) - 0.5) * 3
+            r0 = 8 + rng(r, c, 3) * 4
+            cv.ellipse(x, y + 4, r0, r0 * 0.62, T("leaf", 3))
+            for k in range(6):
+                a = -2.7 + k * 0.52
+                cv.ellipse(x + math.cos(a) * r0 * 0.55, y + math.sin(a) * r0 * 0.4,
+                           r0 * 0.6, r0 * 0.36, T("crop", 1))
+            cv.ellipse(x - 1, y - 2, r0 * 0.34, r0 * 0.2, T("crop", 0))
+            cv.px(x + 2, y + 2, T("crop", 2))
+
+
+def _crop_scallion(cv, w, h):
+    for r in range(5):
+        for c in range(12):
+            x = 14 + c * ((w - 28) / 11.0) + (rng(r, c, 4) - 0.5) * 3
+            y = 26 + r * ((h - 46) / 4.0)
+            hgt = 18 + rng(r, c, 5) * 9
+            for k in (-1, 0, 1):
+                cv.line(x + k * 1.7, y, x + k * 2.6, y - hgt, T("crop", 1 + (k == 0)), 1)
+            cv.line(x, y - hgt + 2, x, y - hgt - 3, T("crop", 0))
+            cv.px(x - 3, y + 1, T("crop", 2))
+
+
+def _crop_sprout(cv, w, h):
+    for r in range(6):
+        for c in range(11):
+            x = 15 + c * ((w - 30) / 10.0) + (rng(r, c, 6) - 0.5) * 4
+            y = 24 + r * ((h - 44) / 5.0)
+            cv.ellipse(x, y, 4, 2, T("crop", 1))
+            cv.px(x - 3, y - 1, T("crop", 0))
+            cv.px(x + 3, y - 1, T("crop", 0))
+            cv.line(x, y + 1, x, y + 3, T("soil", 3))
+
+
+def _crop_corn(cv, w, h):
+    for r in range(4):
+        for c in range(6):
+            x = 19 + c * ((w - 38) / 5.0) + (rng(r, c, 7) - 0.5) * 4
+            y = 32 + r * ((h - 56) / 3.0)
+            hgt = 30 + rng(r, c, 8) * 8
+            cv.line(x, y + 4, x, y - hgt, T("crop", 2), 1)
+            for k in range(5):
+                yy = y - 2 - k * 6
+                cv.line(x, yy, x - 8, yy - 7, T("crop", 1))
+                cv.line(x, yy, x + 8, yy - 7, T("crop", 1))
+            cv.ellipse(x + 3, y - hgt + 7, 3, 7, T("crop_y", 1))
+            cv.px(x + 2, y - hgt + 4, T("crop_y", 0))
+            cv.line(x, y - hgt, x, y - hgt - 5, T("crop_y", 2))
+
+
+def _crop_trellis(cv, w, h):
+    for i in range(5):
+        x = 22 + i * ((w - 44) / 4.0)
+        cv.line(x, 26, x, h - 18, T("wood", 1), 2)
+    for j in range(4):
+        y = 34 + j * ((h - 50) / 3.0)
+        cv.line(20, y, w - 20, y, T("wood", 2), 2)
+    for r in range(5):
+        for c in range(8):
+            x = 18 + c * ((w - 36) / 7.0)
+            y = 30 + r * ((h - 48) / 4.0) - 4
+            cv.ellipse(x, y, 8, 5, T("crop", 1))
+            cv.ellipse(x - 2, y - 2, 5, 3, T("crop", 0))
+            cv.px(x + 3, y + 1, T("crop", 2))
+
+
+def _crop_empty(cv, w, h):
+    for y in range(26, h - 18, 8):
+        cv.rect(14, y, w - 28, 3, T("soil", 1))
+    for i in range(16):
+        cv.px(16 + rng(i, 1, 11) * (w - 32), 28 + rng(i, 2, 12) * (h - 48), T("soil", 0))
+
+
 def crops(stage):
-    """96x64 一块田的作物层，stage 0..2。"""
-    cv = Canvas(96, 64)
-    rows = 4
-    for r in range(rows):
-        y = 8 + r * 14
-        for i in range(9):
-            x = 7 + i * 10 + (0 if r % 2 == 0 else 5)
-            if stage == 0:
-                cv.rect(x, y + 6, 2, 3, "sprout")
-                cv.rect(x - 1, y + 4, 1, 2, "crop")
-                cv.rect(x + 2, y + 4, 1, 2, "crop")
-            elif stage == 1:
-                cv.rect(x, y + 1, 2, 8, "sprout")
-                cv.rect(x - 2, y + 2, 2, 4, "crop")
-                cv.rect(x + 2, y, 2, 5, "crop_lit")
-                cv.rect(x - 3, y + 5, 2, 3, "crop")
-            else:
-                cv.rect(x, y - 3, 2, 12, "sprout")
-                cv.rect(x - 3, y - 1, 3, 6, "crop")
-                cv.rect(x + 2, y - 3, 3, 6, "crop_lit")
-                cv.rect(x - 5, y + 2, 3, 4, "crop")
-                cv.rect(x + 4, y + 1, 3, 4, "crop_lit")
-                cv.rect(x - 1, y - 6, 4, 4, "crop_lit")
+    w, h = 160, 112
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 6, h - 4, w // 2 - 6, 8)
+    _plot_frame(cv, w, h)
+    [_crop_sprout, _crop_leafy, _crop_scallion, _crop_corn, _crop_trellis, _crop_empty][stage % 6](cv, w, h)
+    cv.out(T("ink", 0))
     return cv
 
 
-# ---------------------------------------------------------------- 小道具
-def _jar(cv):
-    cv.ellipse(16, 22, 9, 7, "wood")
-    cv.rect(11, 12, 10, 10, "wood")
-    cv.rect(9, 10, 14, 3, "wood_lt")
-    cv.rect(13, 8, 6, 3, "wood_dk")
-    cv.rect(12, 13, 2, 8, "wood_lt")
-    cv.rect(20, 14, 2, 8, "wood_dk")
-    cv.ellipse(16, 10, 7, 2, "ink_soft")
-
-
-def _bucket(cv):
-    cv.rect(10, 14, 12, 14, "wood")
-    cv.rect(10, 14, 12, 2, "wood_lt")
-    cv.rect(10, 20, 12, 2, "steel_dark")
-    cv.rect(9, 12, 14, 3, "wood_lt")
-    cv.rect(11, 8, 10, 2, "wood_dk")
-    cv.rect(13, 6, 2, 3, "wood_dk")
-
-
-def _basket(cv):
-    cv.rect(9, 17, 14, 10, "straw")
-    cv.rect(9, 17, 14, 2, "straw_lt")
-    for x in range(10, 23, 3):
-        cv.rect(x, 19, 1, 8, "straw_dk")
-    cv.rect(9, 21, 14, 1, "straw_dk")
-    cv.rect(11, 15, 10, 3, "straw_lt")
-
-
-def _woodpile(cv):
-    for i, y in enumerate((24, 19, 14)):
-        n = 3 - (i // 2)
-        for k in range(n):
-            x = 6 + k * 7 + (i % 2) * 2
-            cv.rect(x, y, 7, 5, "wood")
-            cv.rect(x, y, 7, 1, "wood_lt")
-            cv.rect(x + 6, y, 1, 5, "wood_dk")
-            cv.px(x + 3, y + 2, "wood_hi")
-
-
-def _stool(cv):
-    cv.rect(10, 14, 12, 3, "wood")
-    cv.rect(10, 14, 12, 1, "wood_lt")
-    for x in (11, 19):
-        cv.rect(x, 17, 2, 9, "wood_dk")
-
-
-def _broom(cv):
-    cv.line(14, 8, 20, 24, "wood", 2)
-    cv.rect(17, 22, 8, 4, "straw")
-    for i in range(4):
-        cv.line(18 + i * 2, 26, 17 + i * 2, 30, "straw_dk", 1)
-    cv.rect(12, 6, 6, 3, "wood_dk")
-
-
-def _chicken(cv, peck=False, flip=False):
-    cx = 16
-    cv.ellipse(cx, 22, 8, 6, "cream_dark")
-    cv.ellipse(cx - 1, 20, 7, 5, "cream")
-    if peck:
-        cv.ellipse(cx + 6, 26, 3, 3, "cream")
-        cv.rect(cx + 8, 25, 3, 2, "gold")
-        cv.rect(cx + 6, 23, 3, 2, "cloth_red")
-    else:
-        cv.rect(cx + 3, 12, 6, 6, "cream")
-        cv.rect(cx + 8, 14, 3, 2, "gold")
-        cv.rect(cx + 5, 10, 3, 2, "cloth_red")
-        cv.px(cx + 7, 13, "ink")
-    cv.rect(cx - 2, 18, 4, 3, "cream_dark")
-    for x in (cx - 4, cx - 1):
-        cv.rect(x, 27, 1, 2, "gold_dark")
-
-
-def _cat(cv):
-    cv.ellipse(16, 24, 10, 5, "pants_lit")
-    cv.ellipse(22, 22, 4, 4, "pants")
-    cv.rect(25, 19, 2, 2, "pants")
-    cv.rect(24, 18, 1, 2, "pants")
-    cv.px(26, 22, "ink")
-    cv.rect(8, 22, 3, 2, "pants_dark")
-
-
-def _crock(cv):
-    cv.ellipse(16, 20, 12, 9, "stone_dk")
-    cv.ellipse(16, 19, 11, 8, "stone")
-    cv.ellipse(16, 12, 8, 3, "stone_dk")
-    cv.ellipse(16, 12, 6, 2, "water")
-    cv.rect(12, 13, 2, 6, "water_lt")
-
-
-def _hay(cv):
-    cv.ellipse(16, 22, 12, 7, "straw_dk")
-    cv.ellipse(16, 21, 11, 6, "straw")
-    for i in range(6):
-        cv.line(8 + i * 3, 26, 12 + i * 3, 16, "straw_lt", 1)
-    cv.rect(12, 14, 8, 1, "straw_dk")
-
-
-def _well(cv):
-    """石圈井台 + 木架吊桶，32 宽的格子放得下。"""
-    cv.ellipse(16, 25, 12, 6, "stone_dk")
-    cv.ellipse(16, 24, 11, 5, "stone")
-    cv.ellipse(16, 23, 7, 3, "water_dk")
-    cv.ellipse(16, 23, 6, 2, "water")
-    cv.px(14, 23, "water_lt")
+# ---------------- 小道具 ----------------
+def well():
+    w, h = 140, 132
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 8, h - 6, 56, 12)
+    # 井台石圈
+    cv.ellipse(w // 2, h - 26, 54, 24, T("stone", 3))
+    cv.ellipse(w // 2, h - 30, 50, 21, T("stone", 2))
+    for i in range(10):
+        a = math.pi * 2 * i / 10
+        cv.line(w // 2 + math.cos(a) * 50, h - 30 + math.sin(a) * 21,
+                w // 2 + math.cos(a) * 50, h - 30 + math.sin(a) * 21 + 14, T("stone", 4))
+    cv.ellipse(w // 2, h - 30, 44, 17, T("stone", 1))
+    cv.ellipse(w // 2, h - 32, 38, 13, T("ink", 1))
+    cv.ellipse(w // 2, h - 30, 36, 11, T("water", 2))
+    cv.ellipse(w // 2 - 10, h - 32, 12, 4, T("water", 1))
     # 木架
-    for x in (6, 24):
-        cv.rect(x, 8, 3, 15, "wood")
-        cv.rect(x, 8, 1, 15, "wood_lt")
-    cv.rect(6, 6, 21, 3, "wood_dk")
-    cv.rect(9, 9, 15, 2, "wood")
-    # 吊绳 + 小桶
-    cv.rect(16, 11, 1, 6, "straw_dk")
-    cv.rect(13, 17, 7, 5, "wood")
-    cv.rect(13, 17, 7, 1, "wood_lt")
-    cv.rect(13, 19, 7, 1, "steel_dark")
+    for s in (-1, 1):
+        x = w // 2 + s * 44
+        cv.rect(x - 5, 16, 10, h - 44, T("wood", 2))
+        cv.rect(x - 5, 16, 3, h - 44, T("wood", 1))
+        cv.rect(x - 5, 16, 10, 4, T("wood", 3))
+    cv.rect(w // 2 - 52, 12, 104, 12, T("wood", 2))
+    cv.rect(w // 2 - 52, 12, 104, 3, T("wood", 1))
+    cv.rect(w // 2 - 52, 22, 104, 3, T("wood", 4))
+    # 轱辘与绳
+    cv.ellipse(w // 2, 30, 12, 10, T("wood", 2))
+    cv.ellipse(w // 2, 30, 6, 5, T("wood", 4))
+    cv.line(w // 2 + 10, 30, w // 2 + 10, 58, T("wood", 3))
+    # 桶
+    cv.rect(w // 2 + 2, 56, 20, 16, T("wood", 2))
+    cv.rect(w // 2 + 2, 56, 20, 2, T("wood", 4))
+    cv.rect(w // 2 + 2, 62, 20, 2, T("stone", 3))
+    cv.out(T("ink", 0))
+    return cv
 
 
-def _crate(cv):
-    cv.rect(8, 15, 16, 13, "wood")
-    cv.rect(8, 15, 16, 2, "wood_lt")
-    cv.rect(8, 15, 2, 13, "wood_lt")
-    cv.rect(22, 15, 2, 13, "wood_dk")
-    cv.rect(8, 26, 16, 2, "wood_dk")
-    cv.line(9, 16, 23, 27, "wood_dk", 1)
-    cv.line(9, 27, 23, 16, "wood_dk", 1)
+def _jar(w, h, big=True):
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 5, w // 2 - 6, 7)
+    body = T("red" if big else "wall", 1)
+    cv.ellipse(w // 2, h - 20, w * 0.42, h * 0.34, T("ink", 0))
+    cv.ellipse(w // 2, h - 21, w * 0.40, h * 0.32, body)
+    cv.ellipse(w // 2 - w * 0.12, h - 28, w * 0.16, h * 0.16, T("red" if big else "wall", 0))
+    cv.rect(w // 2 - w * 0.18, h - h * 0.72, w * 0.36, h * 0.18, body)
+    cv.rect(w // 2 - w * 0.24, h - h * 0.76, w * 0.48, h * 0.10, T("red" if big else "wall", 2))
+    cv.rect(w // 2 - w * 0.24, h - h * 0.76, w * 0.48, h * 0.04, T("red" if big else "wall", 1))
+    cv.out(T("ink", 0))
+    return cv
 
 
-def _bush(cv):
-    cv.ellipse(16, 24, 11, 7, "leaf_dk")
-    cv.ellipse(16, 23, 10, 6, "leaf")
-    cv.ellipse(12, 20, 6, 4, "leaf_lt")
-    cv.ellipse(21, 22, 5, 4, "leaf_lt")
-    for y in range(14, 31):
-        for x in range(4, 29):
-            if cv.img.getpixel((x, y))[3] and rng(x, y, 4) > 0.93:
-                cv.px(x, y, "leaf_hi")
+def jar_big():
+    return _jar(56, 68, True)
+
+
+def jar_small():
+    return _jar(34, 42, False)
+
+
+def woodpile():
+    w, h = 96, 60
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 4, h - 5, w // 2 - 8, 7)
+    for r in range(3):
+        for c in range(4):
+            x = 14 + c * 20 + (r % 2) * 8
+            y = h - 16 - r * 14
+            cv.ellipse(x, y, 11, 7, T("wood", 3))
+            cv.ellipse(x, y, 8, 5, T("wood", 1))
+            cv.ellipse(x, y, 4, 2, T("wood", 2))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def rack():
+    w, h = 130, 120
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 4, h - 5, w // 2 - 10, 8)
+    for s in (-1, 1):
+        x = w // 2 + s * 46
+        cv.rect(x - 4, 14, 8, h - 22, T("wood", 2))
+        cv.rect(x - 4, 14, 3, h - 22, T("wood", 1))
+    cv.rect(w // 2 - 52, 12, 104, 6, T("wood", 2))
+    cv.rect(w // 2 - 52, 12, 104, 2, T("wood", 1))
+    # 晾着的布
+    cv.rect(w // 2 - 34, 18, 34, 56, T("plaster", 1))
+    cv.rect(w // 2 - 34, 18, 34, 30, T("plaster", 0))
+    for i in range(4):
+        cv.rect(w // 2 - 34 + i * 9, 20, 2, 52, T("plaster", 2))
+    # 挂辣椒
+    for k in range(12):
+        x = w // 2 + 6 + (k % 4) * 5
+        y = 20 + k * 4
+        cv.px(x, y, T("red", 0))
+        cv.px(x, y + 1, T("red", 1))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def chicken(pose=0):
+    w, h = 38, 34
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 13, 4)
+    body = (w // 2, h - 14)
+    cv.ellipse(body[0], body[1], 12, 9, T("plaster", 0))
+    cv.ellipse(body[0] - 2, body[1] - 2, 9, 6, T("plaster", 1))
+    cv.ellipse(body[0] + 8, body[1] - 6, 6, 5, T("plaster", 0))
+    cv.px(body[0] + 12, body[1] - 6, T("crop_y", 1))
+    cv.px(body[0] + 13, body[1] - 6, T("crop_y", 1))
+    cv.rect(body[0] + 8, body[1] - 12, 3, 3, T("red", 0))
+    cv.px(body[0] + 11, body[1] - 7, T("ink", 0))
+    for k in range(3):
+        cv.line(body[0] - 4 + k * 3, body[1] + 8, body[0] - 4 + k * 3, h - 3, T("crop_y", 2))
+    if pose == 1:
+        cv.line(body[0] - 10, body[1] - 4, body[0] - 16, body[1] - 12, T("plaster", 1), 2)
+    cv.out(T("ink", 0))
+    return cv
+
+
+def bucket():
+    w, h = 30, 30
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 10, 4)
+    cv.rect(8, 10, 14, 16, T("wood", 2))
+    cv.rect(8, 10, 14, 2, T("wood", 1))
+    cv.rect(8, 14, 14, 2, T("stone", 2))
+    cv.rect(8, 20, 14, 2, T("stone", 2))
+    cv.ellipse(w // 2, 10, 8, 3, T("wood", 3))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def basket():
+    w, h = 34, 28
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 11, 4)
+    cv.ellipse(w // 2, h - 12, 13, 8, T("straw", 1))
+    cv.ellipse(w // 2, h - 14, 11, 5, T("straw", 2))
+    for k in range(3):
+        cv.line(6, h - 14 + k * 4, w - 6, h - 14 + k * 4, T("straw", 3))
+    cv.ellipse(w // 2, h - 18, 6, 3, T("straw", 0))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def stool():
+    w, h = 34, 32
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 10, 4)
+    cv.ellipse(w // 2, h - 20, 12, 5, T("wood", 2))
+    cv.ellipse(w // 2, h - 21, 10, 4, T("wood", 1))
+    for x in (w // 2 - 7, w // 2 + 7):
+        cv.line(x, h - 20, x + (3 if x < w // 2 else -3), h - 6, T("wood", 3), 2)
+    cv.out(T("ink", 0))
+    return cv
+
+
+def broom():
+    w, h = 30, 66
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 8, 4)
+    cv.line(w // 2 + 4, 6, w // 2 - 2, h - 26, T("wood", 2), 3)
+    for k in range(7):
+        cv.line(w // 2 - 8 + k * 2.4, h - 28, w // 2 - 10 + k * 3.2, h - 4, T("straw", 2))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def hay():
+    w, h = 76, 54
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 6, h - 5, w // 2 - 8, 8)
+    cv.ellipse(w // 2, h - 18, 32, 17, T("straw", 2))
+    cv.ellipse(w // 2 - 4, h - 22, 26, 13, T("straw", 1))
+    for k in range(10):
+        cv.line(12 + k * 5, h - 10, 16 + k * 5, h - 30, T("straw", 3))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def crock():
+    w, h = 32, 36
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 9, 4)
+    cv.ellipse(w // 2, h - 16, 11, 11, T("wall", 2))
+    cv.rect(w // 2 - 6, h - 30, 12, 8, T("wall", 1))
+    cv.rect(w // 2 - 8, h - 32, 16, 4, T("wall", 3))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def rock():
+    w, h = 44, 30
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 3, h - 4, 16, 5)
+    cv.poly([(6, h - 6), (10, 12), (24, 6), (38, 14), (36, h - 6)], T("stone", 3))
+    cv.poly([(10, 12), (24, 6), (30, 14), (16, 18)], T("stone", 1))
+    cv.poly([(24, 6), (38, 14), (34, 18), (30, 14)], T("stone", 2))
+    cv.out(T("ink", 0))
+    return cv
+
+
+def crate():
+    w, h = 48, 44
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 3, h - 4, 16, 5)
+    cv.rect(6, 10, 36, 28, T("wood", 2))
+    cv.rect(6, 10, 36, 3, T("wood", 1))
+    cv.rect(6, 10, 3, 28, T("wood", 1))
+    cv.rect(39, 10, 3, 28, T("wood", 4))
+    cv.line(8, 12, 40, 36, T("wood", 3), 2)
+    cv.line(40, 12, 8, 36, T("wood", 3), 2)
+    cv.out(T("ink", 0))
+    return cv
+
+
+def bush():
+    w, h = 96, 78
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 6, h - 5, 32, 8)
+    _canopy(cv, w // 2, h - 30, 40, 28, 71)
+    _canopy(cv, w // 2 - 22, h - 24, 24, 18, 72)
+    _canopy(cv, w // 2 + 22, h - 26, 24, 18, 73)
+    cv.out(T("ink", 0))
+    return cv
+
+
+def cat():
+    w, h = 36, 30
+    cv = Canvas(w, h)
+    _shadow_ellipse(cv, w // 2 + 2, h - 4, 11, 4)
+    cv.ellipse(w // 2, h - 10, 16, 8, T("wall", 2))
+    cv.ellipse(w // 2 - 14, h - 18, 8, 8, T("wall", 2))
+    cv.poly([(w // 2 - 20, h - 26), (w // 2 - 16, h - 18), (w // 2 - 12, h - 24)], T("wall", 2))
+    cv.poly([(w // 2 - 8, h - 26), (w // 2 - 4, h - 18), (w // 2, h - 24)], T("wall", 2))
+    cv.line(w // 2 + 16, h - 14, w // 2 + 22, h - 24, T("wall", 3), 2)
+    cv.out(T("ink", 0))
+    return cv
 
 
 DRAWERS = {
-    "jar": _jar, "bucket": _bucket, "basket": _basket, "woodpile": _woodpile,
-    "stool": _stool, "broom": _broom, "chicken_a": lambda cv: _chicken(cv),
-    "chicken_b": lambda cv: _chicken(cv, peck=True), "chicken_c": lambda cv: _chicken(cv, flip=True),
-    "cat": _cat, "crock": _crock, "hay": _hay, "well": _well, "crate": _crate, "bush": _bush,
+    "well": well, "jar_big": jar_big, "jar_small": jar_small, "woodpile": woodpile,
+    "rack": rack, "chicken_a": lambda: chicken(0), "chicken_b": lambda: chicken(1),
+    "bucket": bucket, "basket": basket, "stool": stool, "broom": broom, "hay": hay,
+    "crock": crock, "rock": rock, "crate": crate, "bush": bush, "cat": cat,
 }
 
 PROP_NAMES = list(DRAWERS.keys())
 
 
 def prop(name):
-    cv = Canvas(32, 32)
-    DRAWERS[name](cv)
-    cv.out("ink")
-    return cv
+    return DRAWERS[name]()

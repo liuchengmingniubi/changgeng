@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://4vlmvax0pbs3"
-path="res://.godot/imported/props.png-5cd46ab669766df4629561ffe6e611c9.ctex"
+uid="uid://ch1e7tfofuyd4"
+path="res://.godot/imported/prop_crock.png-cdda0244f2518b05b52de2c2e93dbab7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/home_yard/props.png"
-dest_files=["res://.godot/imported/props.png-5cd46ab669766df4629561ffe6e611c9.ctex"]
+source_file="res://assets/art/home_yard/prop_crock.png"
+dest_files=["res://.godot/imported/prop_crock.png-cdda0244f2518b05b52de2c2e93dbab7.ctex"]
 
 [params]
 
