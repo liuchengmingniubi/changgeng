@@ -305,7 +305,7 @@ def _attack(direction, index):
 def _idle(direction, index):
     """待机 4 帧：一次呼吸，肩臂只上下 1 像素，避免"抽动"。"""
     bob = [0, 1, 1, 0][index]
-    sway = [0, 0, 1, 0][index]
+    sway = [0, 0, 1, 1][index]
     if direction in (0, 3):
         hands = [(CX - 11 - sway, 52 + bob), (CX + 11 + sway, 52 + bob)]
         feet = [(CX - 4, FLOOR), (CX + 4, FLOOR)]

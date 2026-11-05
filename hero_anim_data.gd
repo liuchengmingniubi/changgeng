@@ -22,10 +22,10 @@ const ATTACK_HAND := [
 	[Vector2(15,42), Vector2(13,33), Vector2(16,29), Vector2(24,31), Vector2(31,40), Vector2(27,45)]
 ]
 const IDLE_HAND := [
-	[Vector2(35,52), Vector2(35,53), Vector2(36,53), Vector2(35,52)],
-	[Vector2(13,52), Vector2(13,53), Vector2(11,53), Vector2(13,52)],
-	[Vector2(34,52), Vector2(34,53), Vector2(36,53), Vector2(34,52)],
-	[Vector2(35,52), Vector2(35,53), Vector2(36,53), Vector2(35,52)]
+	[Vector2(35,52), Vector2(35,53), Vector2(36,53), Vector2(36,52)],
+	[Vector2(13,52), Vector2(13,53), Vector2(11,53), Vector2(11,52)],
+	[Vector2(34,52), Vector2(34,53), Vector2(36,53), Vector2(36,52)],
+	[Vector2(35,52), Vector2(35,53), Vector2(36,53), Vector2(36,52)]
 ]
 # 刀身角度（度，0=向右，90=向下）
 const ATTACK_BLADE := [
