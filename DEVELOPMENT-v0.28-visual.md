@@ -50,9 +50,20 @@ python -m tools.build_home_yard
 python -m tools.scene_preview
 ```
 
-### 4. 文档
+### 4. 室内样板（六张图拼装）
 
-- 本文件；`previews/home_yard/README.md`；`README.md` 末尾新增「美术样品」小节。
+- 素材来源：用户提供的六张 PNG（灶台 / 书桌 / 木床 / 石板地面 / 木箱 / 空屋外壳），
+  **没有重画**，只做裁切、缩放、限色与拼装；原件保留在 `assets/art/home_interior/source/`（带 `.gdignore`）。
+- 预览场景：`previews/home_interior_preview.tscn` / `.gd`，入口在下方中央踏步，WASD 移动、空格挥剑。
+- 素材：`assets/art/home_interior/{wall,ground,bed,desk,chest,stove,steps}.png` + `layout.json`。
+- 截图 `previews/home_interior/preview.png`；录像 `walk-demo.gif` / `walk-demo.mp4`（30fps / 230 帧）。
+- 生成器：`tools/build_interior.py`（`python -m tools.build_interior`），摆放常量在其中的 `LAYOUT`。
+- 关键处理：`Image.getbbox()` 会把透明区残留 RGB 算成内容 → 改为按 `alpha ≥ 128` 二值化求边界，
+  再用同一遮罩做缩放后的 alpha，最后 `MinFilter(3)` 腐蚀 1px 去毛边，才能保住透明背景不留脏边。
+
+### 5. 文档
+
+- 本文件；`previews/home_yard/README.md`；`previews/home_interior/README.md`；`README.md` 末尾新增「美术样品」小节。
 
 ## 验证
 

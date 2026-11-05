@@ -68,6 +68,15 @@ engine\Godot_v4.3-stable_win64_console.exe --path . res://previews/home_yard_pre
 截图与行走演示见 `previews/home_yard/`，素材规范与重新生成命令见 `previews/home_yard/README.md`，
 本次改动说明见 `DEVELOPMENT-v0.28-visual.md`。
 
+另有一屏**室内样板**：用六张现成 PNG（灶台、书桌、木床、石板地面、木箱、空屋外壳）拼装，没有重画素材，
+入口在下方中央，人物可走动、家具可碰撞、按脚底 y 遮挡。
+
+```
+engine\Godot_v4.3-stable_win64_console.exe --path . res://previews/home_interior_preview.tscn
+```
+
+截图与行走演示见 `previews/home_interior/`，说明见 `previews/home_interior/README.md`。
+
 ## 授权
 游戏代码：MIT（见 LICENSE）。程序绘制美术为本项目原创。
 附带 Godot Engine 4.3：MIT（engine/LICENSE.txt）。
