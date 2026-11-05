@@ -1,0 +1,10 @@
+v0.27 更新方法
+
+1. 关闭游戏。先备份旧工程和存档。
+2. 解压此压缩包，把changgeng文件夹里面的文件复制到旧工程中project.godot所在目录，替换同名文件。不要把整个changgeng文件夹嵌套进旧工程。
+3. 保留旧工程原有的engine文件夹，本包不重复包含Windows引擎。
+4. 双击Play-Windows.bat。首次启动会先重新导入资源，请稍等。
+
+也可用Godot 4.3打开project.godot，按F5运行。
+旧存档继续使用，村庄坐标自动迁移。新版本仍从16:00开始允许睡觉。
+详见DEVELOPMENT-v0.27.md。

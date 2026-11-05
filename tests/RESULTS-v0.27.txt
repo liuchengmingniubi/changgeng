@@ -1,0 +1,39 @@
+Godot 4.3 stable / headless / Linux
+32 regression entry points passed. Includes historical alias entry points art_access and forge_flow.
+Windows interactive/GPU/FPS verification not performed.
+
+affinity_v23.gd 0 PASS v23: 13 distinct initial affinities, elder 40, no first-meet bonus, moderate-minus gains, 50/70/55/65 gates, old-value preservation, missing-NPC defaults, task hand-in rewards, mid-dialogue save safety, no duplicate payouts and cap
+animation_inventory.gd 0 PASS: 18 slots, paging, stack count, selection, attack recovery, walk start/stop
+art_access.gd 0 PASS: 19 houses and all NPC/door/field paths, camera, hoe, planting, watering, days, harvest once, farming save/load
+combat_flow.gd 0 PASS: directional hits, once per swing, wall blocking, kill XP, loot once, invulnerability, potion rules, level-up, death, saved enemies, level cap
+commission_rules_v25.gd 0 PASS v25 commissions: failure 10/20/28/0, no penalty for posted jobs, partial materials forfeited, completed tasks freeze, elite clears slot and preserves pending rewards, exact prices and categorized penalties
+commissions_v24.gd 0 PASS v24 commissions: 40 templates, 6 gated warrants, 2+1 slots, clocks, cooldown, 20% persisted checks, reward pools, elite identity/save, delivery, storage overflow, no duplicate claim, affinity, jade UI, currency migration
+cooking_flow.gd 0 PASS: wheat/flour/foods, recipe cost, paid mill-only, energy cap, unrestricted food and 30s potion cooldown, full energy no consumption, saved foods
+craft_layout_v17.gd 0 PASS: craft control layout fits 1280x800, bookless recipe selection, frame-spanning hit window
+crafting_combat_v17.gd 0 PASS v17: recipes, one-use books, cancel/full-bag atomicity, worker checks, upgrade, weapon timing, buffered input, continuous swing, crit, probabilistic drops, loot save, cooldowns
+enemy_states.gd 0 PASS: detect, chase, windup, locked attack, side-step, recovery, leash, rest respawn
+energy_rules.gd 0 PASS: 24-minute day, food-energy only, independent cooldowns, inclusive 70 percent regen, 10 percent barracks sleep, doctor full heal, locked homes, 20 percent death loss, energy/cooldown save and UI
+equipment_flow.gd 0 PASS: expanded slots, wear/remove, HP/attack/defense, no heal exploit, full bag safety, saved equipment, UI
+farming_map.gd 0 PASS: 19 houses and all NPC/door/field paths, camera, hoe, planting, watering, days, harvest once, farming save/load
+forge_flow.gd 0 PASS v17: recipes, one-use books, cancel/full-bag atomicity, worker checks, upgrade, weapon timing, buffered input, continuous swing, crit, probabilistic drops, loot save, cooldowns
+frontier_flow.gd 0 PASS: three maps, reachable NPC/doors/herbs, outdoor follow, fixed rooms, three-kill training and save
+gate_alignment_v251.gd 0 PASS v251: art-aligned gate, real approach corridor, wall collision, F prompt from screenshot position, both-way transitions, return spawn, NPC route alignment and recruitment gate
+gifting_v21.gd 0 PASS v21: gift exclusions and quest protection, held-item menu, quantity/cancel, one-shot confirmation, range/held-state validation, 13 off-duty NPCs, affinity/consumption, ordinary recruitment dialogue, side-quest independence and save/load invalidation
+hotbar_flow.gd 0 PASS: fixed gold row, lower 12 paging, category persistence, assignment swap, vertical sync, wheel wrap/modal lock, save and capacity migration
+inventory_pages.gd 0 PASS: jade bag 3x18, chest 10x30, five filters, last-page access, container limits, no lost stacks, save/load
+life_weekly_v25.gd 0 PASS v25 life/weekly: single overwrite save, manual-only changes, death times/clinic/50%, 02:00 collapse/5%/50 energy/10%, daily 06 reset, treatment costs/hours, food animation interruption, all money ledger, Sunday midnight attribution, 4x10 comments, rolling pages, week-axis graph and once-only report save
+npc_story_flow.gd 0 PASS: 13 schedules, day/night shifts, collision-aware walking, three hidden stories, one-side limit, scout movement, search evidence, family report, cave-mouth reconnaissance, journal/save
+recruitment_flow_v18.gd 0 PASS v18: gear guidance and gate, three equal normal beetles, three lesson dialogues, no training reset, mid-training/final-dialogue saves, return route, companions, roster/future-fate safety, roster layout, 1.2 handoff and legacy saves
+remaining_ui_v20.gd 0 PASS v20: batch one-use books, retained staging, failure atomicity, red shortages, quantities and totals, locks/full bag/off-duty trades, independent audio/settings persistence, menu layout, saved game result, white silhouette, critical sparks and potion countdown
+reward_materials_v24.gd 0 PASS v24 reward support: weekly 16 hides/5 iron/5 copper, independent saved quotas, hide processing, no cord recipe, actual leather accessory equipment stats/save, rare seed planting and once-per-crop fertilizer
+sleep_start_v261.gd 0 PASS v261: 15:59 blocked, 16:00 allowed at home/barracks/clinic, next morning, 10% HP/full energy, wake save, death 20:00 threshold preserved
+smoke.gd 0 PASS: complete opening, out-of-order exploration, crafting, relationships, save/load
+social_v22.gd 0 PASS v22: 195 distinct daily lines/65 topics/39 quizzes, all 13 NPCs, daily gain/once-per-day, preferred gifts, strict one-item three-day rule, quiz rewards/retries, plot context, no-main-gate thresholds, one-side limit, 100 cap and legacy/decimal save migration
+storage_audio.gd 0 PASS: NPC atlas, five audio samples, tool transfer, no duplicates, stack roundtrip, bag reorder, save/load
+supplies_flow.gd 0 PASS: paid bulk milling, portable recipes, unrestricted food and 30s potion cooldown, night-only partial rest, midnight/day rules, saved clock and UI
+ui_operations_v19.gd 0 PASS v19: menu attack blocking, buffered-input clearing, bag/chest layout, split/move/consume/sort conservation, fixed bar, right-click armor/potion, rich tooltips, partial transfer, target cycling, main/side tracker and stack-layout saves
+village_farm_v27.gd 0 PASS v27: 2.25x village area, no meal shifts, separate mill, aligned portals/doors, half-remaining fertilizer, feedback/save/reset, no wasted last-day fertilizer, once-only coordinate migration
+visual_geometry_v26.gd 0 PASS v26: 4 directions x 4 real walk frames, no limb stretching, shared render/collision geometry, trees/pond/fences, swept movement, 19 clear doors, separated shop targets, all item atlas bindings, NPC facing and decorated jade UI
+
+Extra odd-day and legacy fertilizer restore checks:
+PASS v27: 2.25x village area, no meal shifts, separate mill, aligned portals/doors, half-remaining fertilizer, feedback/save/reset, no wasted last-day fertilizer, once-only coordinate migration

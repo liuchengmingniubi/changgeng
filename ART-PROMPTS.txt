@@ -1,0 +1,7 @@
+Generated with built-in image_gen.
+
+Village: Original detailed warm top-down ancient Chinese desert village, adobe family and elder houses, smith and medical house, paths, well, herb plot; no characters or UI; fixed layout matching gameplay.
+
+Home: Warm ancient Chinese adobe interior, wooden floor, sage quilt, storage chest, writing desk and old letter, woven rug, right-wall bookshelf; no characters or UI; orthographic top-down.
+
+Hero: Original Lu Chengan, young Chinese male, black topknot, muted teal cross-collar short tunic, cream collar, brown sash and pouch, charcoal trousers, brown boots; consistent front/back/left/right standing poses, transparent background.

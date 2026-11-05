@@ -1,0 +1,13 @@
+# 统一换行，避免 Windows/Linux 协作时出现整文件 diff
+* text=auto eol=lf
+*.gd text eol=lf
+*.tscn text eol=lf
+*.godot text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.md text eol=lf
+
+# 二进制资源不做换行处理与文本 diff
+*.png binary
+*.wav binary
+*.otf binary
