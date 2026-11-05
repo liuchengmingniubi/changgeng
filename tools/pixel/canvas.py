@@ -1,4 +1,4 @@
-"""硬边像素画布。
+﻿"""硬边像素画布。
 
 原则：
 1. 所有坐标取整，绝不使用抗锯齿；
@@ -8,7 +8,12 @@
 """
 from PIL import Image, ImageDraw
 
-from .palette import ascii_lookup, rgba
+from .palette import ascii_lookup
+from .scene_palette import c as _color
+
+
+def rgba(color):
+    return _color(color) if isinstance(color, str) else color
 
 
 class Canvas:
