@@ -1,4 +1,4 @@
-"""生成主角图集、手部锚点数据与预览图。
+﻿"""生成主角图集、手部锚点数据与预览图。
 
 用法（在项目根目录）：
     python -m tools.build_hero
@@ -25,7 +25,7 @@ PREVIEW = os.path.join(ROOT, "previews")
 SHEETS = {
     "walk": (4, "hero_walk_v28.png"),
     "attack": (6, "hero_attack_v28.png"),
-    "idle": (2, "hero_idle_v28.png"),
+    "idle": (4, "hero_idle_v28.png"),
 }
 
 
@@ -82,15 +82,22 @@ def write_anim_data(hands):
             out.append("[" + ", ".join("Vector2(%d,%d)" % h for h in hands[kind][d]) + "]")
         return ",\n\t".join(out)
 
+    def blades():
+        out = []
+        for d in range(4):
+            out.append("[" + ", ".join("%.0f" % hero.blade_angle(d, f) for f in range(6)) + "]")
+        return ",\n\t".join(out)
+
     text = """extends RefCounted
 # 由 tools/build_hero.py 生成，勿手改。坐标以每帧 48x88 画布左上角为原点。
 const CELL := Vector2(48, 88)
+const FOOT_LIFT := 87.0
 const WALK_SHEET := "res://assets/art/hero_walk_v28.png"
 const ATTACK_SHEET := "res://assets/art/hero_attack_v28.png"
 const IDLE_SHEET := "res://assets/art/hero_idle_v28.png"
-const WALK_FRAMES := 4
-const ATTACK_FRAMES := 6
-const IDLE_FRAMES := 2
+const WALK_FRAMES := %d
+const ATTACK_FRAMES := %d
+const IDLE_FRAMES := %d
 # [朝向][帧] 朝向顺序：0 下 1 左 2 右 3 上
 const WALK_HAND := [
 \t%s
@@ -101,7 +108,17 @@ const ATTACK_HAND := [
 const IDLE_HAND := [
 \t%s
 ]
-""" % (rows("walk"), rows("attack"), rows("idle"))
+# 刀身角度（度，0=向右，90=向下）
+const ATTACK_BLADE := [
+\t%s
+]
+
+static func hand(kind: String, dir: int, frame: int) -> Vector2:
+\tmatch kind:
+\t\t"walk": return WALK_HAND[dir][frame]
+\t\t"attack": return ATTACK_HAND[dir][minf(frame, ATTACK_FRAMES - 1)]
+\t\t_: return IDLE_HAND[dir][frame %% IDLE_FRAMES]
+""" % (SHEETS["walk"][0], SHEETS["attack"][0], SHEETS["idle"][0], rows("walk"), rows("attack"), rows("idle"), blades())
     with open(os.path.join(ROOT, "hero_anim_data.gd"), "w", encoding="utf-8") as f:
         f.write(text)
 

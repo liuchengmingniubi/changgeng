@@ -1356,32 +1356,25 @@ func swing_angle(progress: float) -> float:
 	var settle:=smoothstep(0.68,1.0,progress)
 	return facing.angle()+reverse*(-0.7-0.8*wind+2.9*cut-0.7*settle)
 
-func draw_sword(p: Vector2, progress: float) -> void:
-	var angle:=swing_angle(progress)
-	var kind: String=str(swing_weapon.get("kind","剑"))
-	var pivot:=p+Vector2(0,-40)
-	var hand:=pivot+Vector2.from_angle(angle)*22
-	if progress>0.22 and progress<0.76:
-		var trail:=PackedVector2Array()
-		for i in range(25):
-			var t:=maxf(0.22,progress-float(24-i)*0.004)
-			trail.append(pivot+Vector2.from_angle(swing_angle(t))*(105 if kind=="镰刀" else 67))
-		draw_polyline(trail,Color(0.9,0.94,0.76,sin(progress*PI)*0.65),5,true)
-	draw_set_transform(hand,angle,Vector2.ONE)
-	if kind=="徒手":
-		draw_circle(Vector2(10,0),6,Color("d9ae80"))
-	elif kind=="战锤":
-		draw_line(Vector2(-5,0),Vector2(40,0),Color("79583b"),7,true)
-		draw_rect(Rect2(33,-16,23,32),Color("a5b7ae"))
-		draw_rect(Rect2(36,-13,17,7),Color("dbe3c9"))
-	elif kind=="镰刀":
-		draw_line(Vector2(-5,0),Vector2(78,0),Color("79583b"),6,true)
-		draw_colored_polygon(PackedVector2Array([Vector2(78,3),Vector2(83,-15),Vector2(64,-38),Vector2(40,-44),Vector2(58,-29),Vector2(72,-11)]),Color("d3e1d5"))
+func draw_sword_at(hand: Vector2, angle: float, progress: float, trail: PackedVector2Array = PackedVector2Array()) -> void:
+	var kind: String = str(swing_weapon.get("kind", "剑"))
+	if trail.size() > 1:
+		draw_polyline(trail, Color(0.9, 0.94, 0.76, sin(progress * PI) * 0.55), 5, true)
+	draw_set_transform(hand, angle, Vector2.ONE)
+	if kind == "徒手":
+		draw_circle(Vector2(10, 0), 6, Color("d9ae80"))
+	elif kind == "战锤":
+		draw_line(Vector2(-5, 0), Vector2(40, 0), Color("79583b"), 7, true)
+		draw_rect(Rect2(33, -16, 23, 32), Color("a5b7ae"))
+		draw_rect(Rect2(36, -13, 17, 7), Color("dbe3c9"))
+	elif kind == "镰刀":
+		draw_line(Vector2(-5, 0), Vector2(78, 0), Color("79583b"), 6, true)
+		draw_colored_polygon(PackedVector2Array([Vector2(78, 3), Vector2(83, -15), Vector2(64, -38), Vector2(40, -44), Vector2(58, -29), Vector2(72, -11)]), Color("d3e1d5"))
 	else:
-		draw_rect(Rect2(-4,-3,15,6),Color("6b4b32"))
-		draw_rect(Rect2(7,-9,4,18),Color("e1bd72"))
-		draw_colored_polygon(PackedVector2Array([Vector2(11,-4),Vector2(45,-3),Vector2(54,0),Vector2(45,4),Vector2(11,4)]),Color("cbdcd4"))
-		draw_line(Vector2(13,-2),Vector2(46,-1),Color("f1f5d6"),2,true)
+		draw_rect(Rect2(-4, -3, 15, 6), Color("6b4b32"))
+		draw_rect(Rect2(7, -9, 4, 18), Color("e1bd72"))
+		draw_colored_polygon(PackedVector2Array([Vector2(11, -4), Vector2(45, -3), Vector2(54, 0), Vector2(45, 4), Vector2(11, 4)]), Color("cbdcd4"))
+		draw_line(Vector2(13, -2), Vector2(46, -1), Color("f1f5d6"), 2, true)
 	draw_set_transform(Vector2.ZERO)
 
 func draw_ellipse_shadow(p: Vector2) -> void:

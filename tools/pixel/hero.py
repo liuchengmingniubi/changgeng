@@ -263,7 +263,21 @@ def _walk(direction, index):
     return _body(direction, bob, 0, hands, feet), hands[1]
 
 
-# 挥剑 6 帧：手相对躯干中心的偏移（像素），配合 main.gd 的 swing_angle
+# 挥剑 6 帧：刀身方向（度，0=向右，90=向下；屏幕坐标 y 朝下）
+BLADE = {
+    0: [-62, -92, -122, -150, 172, 148],
+    2: [-30, -4, 24, 56, 92, 118],
+    3: [-70, -95, -120, -145, -170, 165],
+}
+
+
+def blade_angle(direction, index):
+    a = (180.0 - BLADE[2][index]) if direction == 1 else BLADE[direction][index]
+    a = a % 360.0
+    return a - 360.0 if a > 180.0 else a
+
+
+# 挥剑 6 帧：手相对躯干中心的偏移（像素）
 ATTACK_HANDS = {
     0: [(9, -2), (11, -11), (9, -15), (2, -11), (-6, -4), (-2, 1)],
     2: [(-6, -2), (-9, -11), (-4, -15), (6, -13), (11, -2), (6, 3)],
@@ -289,12 +303,14 @@ def _attack(direction, index):
 
 
 def _idle(direction, index):
-    bob = 0 if index == 0 else 1
+    """待机 4 帧：一次呼吸，肩臂只上下 1 像素，避免"抽动"。"""
+    bob = [0, 1, 1, 0][index]
+    sway = [0, 0, 1, 0][index]
     if direction in (0, 3):
-        hands = [(CX - 11, 52 + bob), (CX + 11, 52 + bob)]
+        hands = [(CX - 11 - sway, 52 + bob), (CX + 11 + sway, 52 + bob)]
         feet = [(CX - 4, FLOOR), (CX + 4, FLOOR)]
     else:
-        hands = [(CX - 6, 52 + bob), (CX + 10, 52 + bob)]
+        hands = [(CX - 6 - sway, 52 + bob), (CX + 10 + sway * 2, 52 + bob)]
         feet = [(CX + 2, FLOOR), (CX - 2, FLOOR)]
     return _body(direction, bob, 0, hands, feet), hands[1]
 

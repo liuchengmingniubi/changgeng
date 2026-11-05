@@ -1,30 +1,68 @@
-# ---- Godot ----
-# 引擎二进制不入库（132MB，由 INSTALL.txt 单独分发）
+# ============================================================
+# 长庚·东沙旧事 —— Godot 4.3 工程忽略规则
+# 原则：源码、场景、游戏素材、开发日志全部入库；
+#      可再生缓存、引擎二进制、导出产物、密钥一律不入库。
+# ============================================================
+
+# ---- 引擎与编辑器缓存（可重建，不入库）----
+# 132MB 的 Windows 引擎，按 INSTALL.txt 单独分发
 engine/
-# 编辑器导入缓存，可随时重建
+# Godot 导入缓存与构建缓存，删掉后重新导入即可
 .godot/
-# 导出产物
+.godot-user/
+*.translation
+
+# ---- 导出产物 ----
 build/
+export/
+dist/
 *.exe
 *.pck
-!engine/*.exe
+*.zip
+*.apk
+*.aab
+*.dmg
+*.x86_64
+*.x86_32
+*.wasm
 
-# ---- 测试与运行时产物 ----
-_userdata/
-tests/_logs/
+# ---- 临时文件 ----
 *.tmp
-
-# ---- 系统 ----
+*.temp
+*.bak
+*.orig
+*.rej
+*~
+assets/.font.otf.*
 Thumbs.db
 desktop.ini
 .DS_Store
 
-# 本地调试用户目录（旧做法）
-.godot-user/
+# ---- 密钥与凭据（绝对不入库）----
+# Godot 会把 Android keystore 口令写进 export_credentials.cfg
+export_credentials.cfg
+*.key
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.cer
+secrets.cfg
+.env
+.env.*
+!.env.example
 
-# 字体原子写入残渣
-assets/.font.otf.*
+# ---- 本地运行与测试产物 ----
+_userdata/
+tests/_logs/
 
-# Python 缓存
+# ---- 工具缓存 ----
 __pycache__/
 *.pyc
+
+# ---- 本地 agent 状态（各工作目录各自独立）----
+.workbuddy/
+
+# 临时回归输出（每次跑测试重生成）
+_regress.txt
