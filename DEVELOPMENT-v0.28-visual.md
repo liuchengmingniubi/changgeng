@@ -50,16 +50,28 @@ python -m tools.build_home_yard
 python -m tools.scene_preview
 ```
 
-### 4. 室内样板（六张图拼装）
+### 4. 室内样板（完整房间版）
 
-- 素材来源：用户提供的六张 PNG（灶台 / 书桌 / 木床 / 石板地面 / 木箱 / 空屋外壳），
-  **没有重画**，只做裁切、缩放、限色与拼装；原件保留在 `assets/art/home_interior/source/`（带 `.gdignore`）。
-- 预览场景：`previews/home_interior_preview.tscn` / `.gd`，入口在下方中央踏步，WASD 移动、空格挥剑。
-- 素材：`assets/art/home_interior/{wall,ground,bed,desk,chest,stove,steps}.png` + `layout.json`。
-- 截图 `previews/home_interior/preview.png`；录像 `walk-demo.gif` / `walk-demo.mp4`（30fps / 230 帧）。
-- 生成器：`tools/build_interior.py`（`python -m tools.build_interior`），摆放常量在其中的 `LAYOUT`。
-- 关键处理：`Image.getbbox()` 会把透明区残留 RGB 算成内容 → 改为按 `alpha ≥ 128` 二值化求边界，
-  再用同一遮罩做缩放后的 alpha，最后 `MinFilter(3)` 腐蚀 1px 去毛边，才能保住透明背景不留脏边。
+- 素材来源：用户提供的十张 PNG（空屋外壳 / 石板地面 / 木床 / 书桌 / 木椅 / 木箱 / 灶台连备餐台 / 圆餐桌 / 遗书 / 油灯），
+  **没有重画**，只做裁切、等比缩放、去毛边与拼装；原件保留在 `assets/art/home_interior/source/`（带 `.gdignore`）。
+- 房间结构：外壳整张按 0.82 缩到 1182×795，切成 `shell_back.png`（后墙、檐枋、两侧立柱，画在人后面）与
+  `shell_front.png`（前矮墙、门洞、台阶，画在人前面）→ 人在门口会被矮墙压住小腿，墙脚黑断层消失。
+- 地面：按等宽等比缩放到 1182，取消纵向拉伸；用外壳 alpha 做遮罩，只从房间与门洞透出，墙外保持暗底。
+- 家具（按源图宽高比、底部中心对齐）：床 72×141 靠左墙、书桌 156×107 靠后墙、灶台 180×99 靠右墙、
+  箱子 90×71 在床尾、木椅 44×79 在书桌右侧、圆桌 104×104 在灶台前；桌面件遗书 38×28、油灯 26×24
+  用 `sort = 桌面 y + 0.4/0.5` 压在桌面上，不单独挡人。
+- 交互：`layout.json` 的 `interact` 给出遗书阅读范围与提示；`previews/home_interior_preview.gd` 画阅读面板，
+  正文沿用 `main.gd` 里「父母的遗书 · 剧情草稿」原文。
+- 碰撞与遮挡：按家具落地范围设 AABB，人物逐轴推开；**撞住后位移与走路动画一起停**（不会原地踏步）；
+  遮挡按脚底 y 排序。入口（门洞）始终留空。
+- 预览场景：`previews/home_interior_preview.tscn` / `.gd`，WASD 移动、空格挥剑、书桌前空格读信。
+- 截图 `previews/home_interior/preview.png`、同机位前后对比 `compare.png`（改动前 `preview-before.png`）；
+  录像 `walk-demo.gif` / `walk-demo.mp4`（30fps / 380 帧，进门→顶住书桌→读信→桌后遮挡→顶住圆桌→走向灶台）。
+- 生成器：`tools/build_interior.py`（`python -m tools.build_interior`），摆放常量在其中的 `LAYOUT` / `INTERACT`；
+  对比图 `tools/compare_interior.py`（`python -m tools.compare_interior`）。
+- 关键处理：`Image.getbbox()` 会把透明区残留 RGB 算成内容 → 改为按 `alpha ≥ 128` 二值化求边界；
+  缩放前**预乘 alpha、缩放后反预乘**（否则透明像素 RGB 渗边变黑边）；alpha 阈值 110 二值化 +
+  `MinFilter(3)` 腐蚀 1px 去毛边；不再做调色板量化，保留原图层次。
 
 ### 5. 文档
 

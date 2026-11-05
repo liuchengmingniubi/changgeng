@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djh2wkfl6bchp"
-path="res://.godot/imported/steps.png-f034a663d509c2db0b1a1e4538f061b1.ctex"
+uid="uid://d2xr18mtrh4ks"
+path="res://.godot/imported/shell_back.png-9fbc37febe74ee4df29d148ab325230f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/home_interior/steps.png"
-dest_files=["res://.godot/imported/steps.png-f034a663d509c2db0b1a1e4538f061b1.ctex"]
+source_file="res://assets/art/home_interior/shell_back.png"
+dest_files=["res://.godot/imported/shell_back.png-9fbc37febe74ee4df29d148ab325230f.ctex"]
 
 [params]
 
