@@ -13,7 +13,20 @@
 
 param(
 	[string]$Version = "",
-	[switch]$DryRun
+	[switch]$DryRun,
+	[switch]$IncludeReferenceArt
+)
+
+# 参考图：只给美术定稿对照用，运行时并不加载（main.gd 只从 assets/art/hero.png
+# 与 npcs.png 取图，其余场景由 world_ground.gd 程序化绘制）。
+# 不含它们，包体约 26MB；含它们约 41MB。v0.27 发布包是不含的。
+$referenceArt = @(
+	"assets\art\village.png",
+	"assets\art\village_large.png",
+	"assets\art\wall.png",
+	"assets\art\barracks.png",
+	"assets\art\field.png",
+	"assets\art\home.png"
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,6 +67,7 @@ if (-not $DryRun) {
 
 $copied = 0
 $bytes  = 0
+$skippedRef = 0
 
 Get-ChildItem -Path $root -Recurse -File -Force | ForEach-Object {
 	$rel = $_.FullName.Substring($root.Length + 1)
@@ -62,6 +76,9 @@ Get-ChildItem -Path $root -Recurse -File -Force | ForEach-Object {
 	if ($excludeDirs -contains $top) { return }
 	if ($excludeFiles -contains $_.Name) { return }
 	if ($Version -and $rel -like "*.zip") { return }
+	if (-not $IncludeReferenceArt) {
+		foreach ($r in $referenceArt) { if ($rel -eq $r) { $script:skippedRef++; return } }
+	}
 	foreach ($p in $excludePaths) { if ($rel -like "$p*") { return } }
 
 	if ($DryRun) {
@@ -80,6 +97,9 @@ Get-ChildItem -Path $root -Recurse -File -Force | ForEach-Object {
 
 $mb = [math]::Round($bytes / 1MB, 1)
 Write-Host ("`n文件数: {0}   原始体积: {1} MB" -f $copied, $mb)
+if ($skippedRef -gt 0) {
+	Write-Host ("已跳过 {0} 张参考图（不参与运行）。需要一起打包请加 -IncludeReferenceArt" -f $skippedRef) -ForegroundColor DarkGray
+}
 
 if ($DryRun) {
 	Write-Host "`n=== DRY RUN 结束，未生成文件 ===" -ForegroundColor Cyan

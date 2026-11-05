@@ -1,4 +1,4 @@
-"""主角陆承安的像素骨架。
+﻿"""主角陆承安的像素骨架。
 
 不逐帧手绘，而是"关节参数 → 硬边像素"的确定性生成：
 同一个骨架产出 4 个朝向 × (行走 4 帧 + 挥剑 6 帧 + 待机 2 帧)，
@@ -52,76 +52,97 @@ def _leg(cv, hip, foot):
 
 
 # ---------------------------------------------------------------- 手臂
-def _arm(cv, shoulder, hand):
+def _arm(cv, shoulder, hand, inner=1):
     mid = ((shoulder[0] + hand[0]) / 2, (shoulder[1] + hand[1]) / 2)
     cv.limb(shoulder, mid, 5, "tunic")
     cv.limb(mid, hand, 4, "tunic")
     cv.rect(shoulder[0] - 2, shoulder[1] - 1, 4, 2, "tunic_lit")
+    # 内缘压暗，让手臂从躯干上"浮"出来
+    cv.line(shoulder[0] + 2 * inner, shoulder[1] + 1, hand[0] + 2 * inner, hand[1], "tunic_dark", 1)
     cv.rect(hand[0] - 1, hand[1] - 1, 3, 4, "skin")
     cv.rect(hand[0] - 1, hand[1] + 2, 3, 1, "skin_dark")
 
 
 # ---------------------------------------------------------------- 头
 def _bun(cv, x, y):
-    cv.rect(x, y, 6, 7, "hair")
-    cv.rect(x, y, 6, 1, "hair_lit")
-    cv.rect(x, y + 6, 6, 1, "gold")
-    cv.rect(x + 2, y - 2, 2, 2, "gold_dark")
+    """y 为发髻底边，正好压在头顶。"""
+    cv.rect(x, y - 5, 7, 6, "hair")
+    cv.rect(x, y - 5, 7, 1, "hair_lit")
+    cv.rect(x, y, 7, 1, "gold")
+    cv.rect(x + 2, y - 7, 3, 2, "gold_dark")
+
+
+# 头部轮廓：(行偏移, 左内缩, 宽度)。上圆下削，避免方块脑袋。
+HEAD_PROFILE = (
+    [(0, 3, 10), (1, 1, 14), (2, 0, 16)]
+    + [(r, 0, 16) for r in range(3, 17)]
+    + [(17, 1, 14), (18, 3, 10), (19, 4, 8)]
+)
+
+
+def _hair_mass(cv, x, y):
+    for dy, inset, w in HEAD_PROFILE:
+        cv.rect(x + inset, y + dy, w, 1, "hair")
 
 
 def _head_front(cv, dy=0, lean=0):
     x = 16 + lean
     y = CROWN + dy
-    _bun(cv, x + 5, y - 8)
-    cv.rect(x, y, 16, 20, "hair")            # 头发底胎（含鬓角）
-    cv.rect(x, y, 16, 1, "hair_lit")
-    cv.rect(x, y + 1, 1, 4, "hair_lit")
-    cv.rect(x + 2, y + 6, 12, 14, "skin")     # 脸
-    cv.rect(x + 2, y + 6, 12, 1, "skin_dark")
-    cv.rect(x + 2, y + 5, 12, 1, "hair")      # 刘海
-    cv.rect(x + 4, y + 5, 3, 1, "hair_lit")
-    cv.rect(x + 2, y + 6, 2, 1, "hair")
-    cv.rect(x + 12, y + 6, 2, 1, "hair")
-    cv.rect(x + 4, y + 11, 2, 2, "ink")       # 眼
-    cv.rect(x + 10, y + 11, 2, 2, "ink")
-    cv.rect(x + 4, y + 9, 2, 1, "hair")       # 眉
-    cv.rect(x + 10, y + 9, 2, 1, "hair")
-    cv.rect(x + 7, y + 13, 2, 2, "skin_dark")  # 鼻
+    _bun(cv, x + 5, y)
+    _hair_mass(cv, x, y)
+    cv.rect(x + 1, y + 5, 4, 1, "hair_lit")   # 顶部高光只压左上一小块
+    cv.rect(x + 1, y + 6, 1, 3, "hair_lit")
+    cv.rect(x + 2, y + 6, 12, 11, "skin")     # 脸
+    cv.rect(x + 3, y + 17, 10, 2, "skin")     # 下颌
+    cv.rect(x + 4, y + 19, 8, 1, "skin")
+    cv.rect(x + 2, y + 6, 12, 1, "hair")      # 刘海压在额头上
+    cv.rect(x + 4, y + 6, 3, 1, "hair_lit")
+    cv.rect(x + 2, y + 7, 1, 6, "hair")       # 鬓角
+    cv.rect(x + 13, y + 7, 1, 6, "hair")
+    cv.rect(x + 4, y + 12, 2, 2, "ink")       # 眼
+    cv.rect(x + 10, y + 12, 2, 2, "ink")
+    cv.rect(x + 4, y + 10, 2, 1, "hair")      # 眉
+    cv.rect(x + 10, y + 10, 2, 1, "hair")
+    cv.rect(x + 7, y + 14, 2, 1, "skin_dark")  # 鼻
     cv.rect(x + 6, y + 17, 4, 1, "ink_soft")   # 嘴
-    cv.rect(x + 2, y + 18, 12, 1, "skin_dark")
-    cv.rect(x + 4, y + 7, 6, 1, "skin_lit")
+    cv.rect(x + 5, y + 19, 6, 1, "skin_lit")   # 下巴受光
+    cv.rect(x + 3, y + 8, 4, 1, "skin_lit")
+    cv.rect(x + 3, y + 16, 2, 1, "skin_dark")  # 颧骨影
+    cv.rect(x + 11, y + 16, 2, 1, "skin_dark")
 
 
 def _head_back(cv, dy=0, lean=0):
     x = 16 + lean
     y = CROWN + dy
-    _bun(cv, x + 5, y - 8)
-    cv.rect(x, y, 16, 20, "hair")
-    cv.rect(x, y, 16, 1, "hair_lit")
-    cv.rect(x, y + 1, 1, 6, "hair_lit")
-    cv.rect(x + 3, y + 7, 10, 1, "hair_warm")
-    cv.rect(x + 2, y + 13, 12, 1, "hair_warm")
-    cv.rect(x + 4, y + 18, 8, 1, "hair_warm")
-    cv.rect(x + 6, y + 19, 4, 1, "ink_soft")
+    _bun(cv, x + 5, y)
+    _hair_mass(cv, x, y)
+    cv.rect(x + 1, y + 5, 4, 1, "hair_lit")
+    cv.rect(x + 3, y + 9, 10, 1, "hair_warm")
+    cv.rect(x + 2, y + 15, 12, 1, "hair_warm")
+    cv.rect(x + 5, y + 19, 6, 1, "ink_soft")
 
 
 def _head_side(cv, dy=0, lean=0):
     """朝右的侧面。"""
     x = 16 + lean
     y = CROWN + dy
-    _bun(cv, x + 4, y - 8)
-    cv.rect(x, y, 15, 20, "hair")             # 后脑 + 头顶
-    cv.rect(x, y, 15, 1, "hair_lit")
-    cv.rect(x + 7, y + 6, 8, 14, "skin")      # 侧脸
-    cv.rect(x + 7, y + 6, 8, 1, "skin_dark")
-    cv.rect(x + 7, y + 5, 8, 1, "hair")       # 刘海
-    cv.rect(x, y + 6, 2, 9, "hair_lit")
-    cv.rect(x + 10, y + 11, 2, 2, "ink")      # 眼
-    cv.rect(x + 10, y + 9, 3, 1, "hair")      # 眉
-    cv.rect(x + 14, y + 12, 2, 2, "skin_dark")  # 鼻尖
-    cv.rect(x + 12, y + 17, 3, 1, "ink_soft")   # 嘴
-    cv.rect(x + 2, y + 12, 2, 4, "skin_dark")   # 耳
-    cv.rect(x + 2, y + 12, 1, 4, "skin")
+    _bun(cv, x + 4, y)
+    for r in range(2, 20):                     # 后脑
+        w = 8 if r < 4 else 14
+        cv.rect(x, y + r, w, 1, "hair")
+    cv.rect(x, y + 4, 14, 1, "hair_lit")
+    cv.rect(x + 6, y + 6, 9, 11, "skin")       # 侧脸
+    cv.rect(x + 6, y + 17, 8, 2, "skin")
+    cv.rect(x + 6, y + 6, 10, 1, "hair")       # 刘海
+    cv.rect(x + 7, y + 6, 4, 1, "hair_lit")
+    cv.rect(x + 1, y + 6, 2, 8, "hair_warm")   # 后颈发
+    cv.rect(x + 11, y + 12, 2, 2, "ink")       # 眼
+    cv.rect(x + 11, y + 10, 3, 1, "hair")      # 眉
+    cv.rect(x + 15, y + 13, 1, 2, "skin_dark")  # 鼻
+    cv.rect(x + 13, y + 17, 3, 1, "ink_soft")   # 嘴
+    cv.rect(x + 3, y + 13, 2, 3, "skin_dark")   # 耳
+    cv.rect(x + 3, y + 13, 1, 3, "skin")
+    cv.rect(x + 13, y + 19, 4, 1, "skin_lit")
 
 
 # ---------------------------------------------------------------- 躯干
@@ -213,8 +234,8 @@ def _body(direction, bob, lean, arms, feet):
             _torso_front(cv, dy, lean)
         else:
             _torso_back(cv, dy, lean)
-        _arm(cv, (CX - 10 + lean, SHOULDER + dy), arms[0])
-        _arm(cv, (CX + 10 + lean, SHOULDER + dy), arms[1])
+        _arm(cv, (CX - 10 + lean, SHOULDER + dy), arms[0], 1)
+        _arm(cv, (CX + 10 + lean, SHOULDER + dy), arms[1], -1)
         if direction == 0:
             _head_front(cv, dy, lean)
         else:
@@ -223,7 +244,7 @@ def _body(direction, bob, lean, arms, feet):
         _leg(cv, (CX - 1, HIP + dy), feet[1])
         _leg(cv, (CX + 1, HIP + dy), feet[0])
         _torso_side(cv, dy, lean)
-        _arm(cv, (CX + 5 + lean, SHOULDER + dy), arms[1])
+        _arm(cv, (CX + 5 + lean, SHOULDER + dy), arms[1], -1)
         _head_side(cv, dy, lean)
     cv.out("ink")
     return cv

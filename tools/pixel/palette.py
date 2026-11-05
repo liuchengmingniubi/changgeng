@@ -48,6 +48,7 @@ PALETTE = {
 ASCII_KEYS = [
     (".", None),
     ("#", "ink"),
+    ("~", "ink_soft"),
     ("h", "hair"),
     ("H", "hair_lit"),
     ("s", "skin"),
