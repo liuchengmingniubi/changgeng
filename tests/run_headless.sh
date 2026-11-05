@@ -3,8 +3,11 @@
 # 用法: bash tests/run_headless.sh [测试文件名关键字]
 #
 # 说明:
-#  1) 本机安全策略禁止 Godot 进程写入用户目录(AppData)，引擎会因此段错误。
-#     故将 APPDATA 指向工程内的 _userdata/，使 user:// 落在可写范围内。
+#  1) 本机安全策略只允许 Godot 进程写入主工程目录树内，写外部路径会段错误。
+#     故把 APPDATA 指到主工程的 _userdata/，user:// 才落得下来。
+#     worktree（changgeng-chatgpt 等）在工程之外，改用
+#     <主工程>/_userdata/<worktree 名>，互不覆盖存档。
+#     需要自定义时设 CHANGGENG_USER_DIR。
 #  2) 每个用例独立进程运行，超时 180s。判定标准: 输出含 "PASS" 且无 SCRIPT ERROR。
 
 set -u
@@ -13,10 +16,23 @@ cd "$ROOT" || exit 1
 
 ENGINE="./engine/Godot_v4.3-stable_win64_console.exe"
 [ -f "$ENGINE" ] || ENGINE="./engine/Godot_v4.3-stable_win64.exe"
-[ -f "$ENGINE" ] || { echo "找不到 Godot 引擎，请先解压完整包"; exit 1; }
+[ -f "$ENGINE" ] || { echo "找不到 Godot 引擎：请在主工程建 engine/ 目录联接，或解压完整包"; exit 1; }
 
-export APPDATA="$ROOT\\_userdata"
-mkdir -p "$ROOT/_userdata"
+# 主 worktree 就是 `git worktree list` 的第一项
+MAIN_ROOT="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | head -1)"
+[ -n "$MAIN_ROOT" ] || MAIN_ROOT="$ROOT"
+MAIN_ROOT="${MAIN_ROOT//\\//}"
+
+if [ -n "${CHANGGENG_USER_DIR:-}" ]; then
+	USER_DIR="$CHANGGENG_USER_DIR"
+elif [ "$ROOT" = "$MAIN_ROOT" ]; then
+	USER_DIR="$ROOT/_userdata"
+else
+	USER_DIR="$MAIN_ROOT/_userdata/$(basename "$ROOT")"
+fi
+
+export APPDATA="$USER_DIR"
+mkdir -p "$USER_DIR" 2>/dev/null
 LOGDIR="$ROOT/tests/_logs"
 mkdir -p "$LOGDIR"
 
