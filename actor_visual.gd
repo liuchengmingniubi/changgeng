@@ -7,11 +7,30 @@ var walk: Texture2D          # 待机图集；背包头像与预览记录仍沿�
 var flash: Texture2D         # 受击白闪
 var frames: Array = []       # [朝向][帧] 待机帧区域，保持旧接口
 var scale_factor := 1.0
+const MAP_SHEET := "res://assets/art/hero_home_v4.png"
+const MAP_HEIGHT := 87.0
+var map_texture: Texture2D
+var map_flash: Texture2D
+var map_regions: Array = []
 var sheets := {}
 var flashes := {}
 
 
 func setup() -> void:
+	# 新版二头身图集独立于旧攻击锚点；各帧以透明边界和脚底对齐。
+	var atlas := Image.new()
+	if atlas.load(MAP_SHEET) == OK:
+		map_texture = ImageTexture.create_from_image(atlas)
+		var white: Image = atlas.duplicate()
+		white.adjust_bcs(1.0, 0.0, 0.0)
+		white.adjust_bcs(2.0, 1.0, 1.0)
+		map_flash = ImageTexture.create_from_image(white)
+		var cell := Vector2i(atlas.get_width() / 4, atlas.get_height() / 4)
+		for row in range(4):
+			for col in range(4):
+				var offset := Vector2i(col, row) * cell
+				var used := atlas.get_region(Rect2i(offset, cell)).get_used_rect()
+				map_regions.append(Rect2(Vector2(offset + used.position), Vector2(used.size)))
 	var ok := true
 	for kind in ["walk", "attack", "idle"]:
 		var path: String = {
@@ -58,7 +77,7 @@ func hero(g: Node, p: Vector2) -> void:
 		return
 	var dir := direction(g.facing)
 	var attacking: bool = g.attack_time > 0.0
-	var moving: bool = g.actual_walk or g.walk_blend > 0.2
+	var moving: bool = g.actual_walk
 	var kind := "attack" if attacking else ("walk" if moving else "idle")
 	var frame := 0
 	var progress := 0.0
@@ -70,6 +89,9 @@ func hero(g: Node, p: Vector2) -> void:
 	else:
 		frame = int(g.elapsed * 2.0) % Hero.IDLE_FRAMES
 
+	if map_texture != null:
+		draw_map_hero(g, p, dir, moving, attacking, frame, progress)
+		return
 	var origin := (p - Vector2(Hero.CELL.x * 0.5, Hero.FOOT_LIFT)).round()
 	var region := Rect2(frame * Hero.CELL.x, dir * Hero.CELL.y, Hero.CELL.x, Hero.CELL.y)
 	var texture: Texture2D = flashes[kind] if g.hurt_flash > 0 else sheets[kind]
@@ -85,6 +107,27 @@ func hero(g: Node, p: Vector2) -> void:
 		if dir != 3:
 			strike(g, origin, dir, frame, progress, hand)
 	else:
+		held(g, p, hand)
+
+
+func draw_map_hero(g: Node, p: Vector2, dir: int, moving: bool, attacking: bool, attack_frame: int, progress: float) -> void:
+	# 未提供新版挥剑图集：保持新版身体，以现有六阶段剑轨表现攻击。
+	var pose := int(g.movement_time * 9.0) % 4 if moving and not attacking else 1
+	var region: Rect2 = map_regions[dir * 4 + pose]
+	if region.size.y <= 0:
+		return
+	var size := region.size * (MAP_HEIGHT / region.size.y)
+	var destination := Rect2((p - Vector2(size.x * 0.5, size.y)).round(), size)
+	var side := -1.0 if dir == 1 else 1.0
+	var hand := p + Vector2(side * size.x * 0.32, -MAP_HEIGHT * 0.30)
+	var old_origin := hand - Hero.hand("attack", dir, attack_frame)
+	g.draw_ellipse_shadow(p)
+	if attacking and dir == 3:
+		strike(g, old_origin, dir, attack_frame, progress, hand)
+	g.draw_texture_rect_region(map_flash if g.hurt_flash > 0 else map_texture, destination, region)
+	if attacking and dir != 3:
+		strike(g, old_origin, dir, attack_frame, progress, hand)
+	elif not attacking:
 		held(g, p, hand)
 
 
